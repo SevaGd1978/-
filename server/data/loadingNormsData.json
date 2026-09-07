@@ -1,0 +1,286 @@
+{
+  "fittings": [
+    {
+      "pipe_diameter": "57",
+      "shell_diameter": "125",
+      "bends": "70",
+      "nop": "20-30",
+      "end_element": "10"
+    },
+    {
+      "pipe_diameter": "57",
+      "shell_diameter": "140",
+      "bends": "70",
+      "nop": "20-30",
+      "end_element": "10"
+    },
+    {
+      "pipe_diameter": "76",
+      "shell_diameter": "140",
+      "bends": "50-70",
+      "nop": "20-25",
+      "end_element": "10"
+    },
+    {
+      "pipe_diameter": "76",
+      "shell_diameter": "160",
+      "bends": "50-70",
+      "nop": "20-25",
+      "end_element": "10"
+    },
+    {
+      "pipe_diameter": "89",
+      "shell_diameter": "160",
+      "bends": "40-60",
+      "nop": "20-25",
+      "end_element": "10"
+    },
+    {
+      "pipe_diameter": "89",
+      "shell_diameter": "180",
+      "bends": "40-60",
+      "nop": "20-25",
+      "end_element": "10"
+    },
+    {
+      "pipe_diameter": "108",
+      "shell_diameter": "180",
+      "bends": "40-50",
+      "nop": "20-25",
+      "end_element": "10"
+    },
+    {
+      "pipe_diameter": "108",
+      "shell_diameter": "200",
+      "bends": "40-50",
+      "nop": "20-25",
+      "end_element": "10"
+    },
+    {
+      "pipe_diameter": "133",
+      "shell_diameter": "225",
+      "bends": "40-50",
+      "nop": "20",
+      "end_element": "10"
+    },
+    {
+      "pipe_diameter": "133",
+      "shell_diameter": "250",
+      "bends": "40-50",
+      "nop": "20",
+      "end_element": "10"
+    },
+    {
+      "pipe_diameter": "159",
+      "shell_diameter": "250",
+      "bends": "30",
+      "nop": "20",
+      "end_element": "10"
+    },
+    {
+      "pipe_diameter": "159",
+      "shell_diameter": "280",
+      "bends": "30",
+      "nop": "20",
+      "end_element": "10"
+    },
+    {
+      "pipe_diameter": "219",
+      "shell_diameter": "315",
+      "bends": "20-25",
+      "nop": "12-15",
+      "end_element": "5"
+    },
+    {
+      "pipe_diameter": "219",
+      "shell_diameter": "355",
+      "bends": "20-25",
+      "nop": "12-15",
+      "end_element": "5"
+    },
+    {
+      "pipe_diameter": "273",
+      "shell_diameter": "400",
+      "bends": "15",
+      "nop": "8-10",
+      "end_element": "5"
+    },
+    {
+      "pipe_diameter": "273",
+      "shell_diameter": "450",
+      "bends": "10",
+      "nop": "8-10",
+      "end_element": "5"
+    },
+    {
+      "pipe_diameter": "325",
+      "shell_diameter": "450",
+      "bends": "10",
+      "nop": "6-8",
+      "end_element": "5"
+    },
+    {
+      "pipe_diameter": "325",
+      "shell_diameter": "500",
+      "bends": "8",
+      "nop": "6-8",
+      "end_element": "5"
+    },
+    {
+      "pipe_diameter": "426",
+      "shell_diameter": "560",
+      "bends": "5",
+      "nop": "4",
+      "end_element": "2"
+    },
+    {
+      "pipe_diameter": "426",
+      "shell_diameter": "630",
+      "bends": "3",
+      "nop": "4",
+      "end_element": "2"
+    },
+    {
+      "pipe_diameter": "530",
+      "shell_diameter": "710",
+      "bends": "2",
+      "nop": "2",
+      "end_element": "2"
+    },
+    {
+      "pipe_diameter": "630",
+      "shell_diameter": "800",
+      "bends": "1-2",
+      "nop": "2",
+      "end_element": "2"
+    }
+  ],
+  "pipes": [
+    {
+      "shell_diameter": "125",
+      "h1_8": 216,
+      "h2_0": 260,
+      "h2_2": 272
+    },
+    {
+      "shell_diameter": "140",
+      "h1_8": 176,
+      "h2_0": 210,
+      "h2_2": 225
+    },
+    {
+      "shell_diameter": "160",
+      "h1_8": 140,
+      "h2_0": 156,
+      "h2_2": 169
+    },
+    {
+      "shell_diameter": "180",
+      "h1_8": 108,
+      "h2_0": 125,
+      "h2_2": 132
+    },
+    {
+      "shell_diameter": "200",
+      "h1_8": 88,
+      "h2_0": 100,
+      "h2_2": 112
+    },
+    {
+      "shell_diameter": "225",
+      "h1_8": 70,
+      "h2_0": 80,
+      "h2_2": 89
+    },
+    {
+      "shell_diameter": "250",
+      "h1_8": 60,
+      "h2_0": 70,
+      "h2_2": 78
+    },
+    {
+      "shell_diameter": "280",
+      "h1_8": 48,
+      "h2_0": 55,
+      "h2_2": 60
+    },
+    {
+      "shell_diameter": "315",
+      "h1_8": 39,
+      "h2_0": 44,
+      "h2_2": 42
+    },
+    {
+      "shell_diameter": "355",
+      "h1_8": 24,
+      "h2_0": 32,
+      "h2_2": 32
+    },
+    {
+      "shell_diameter": "400",
+      "h1_8": 22,
+      "h2_0": 25,
+      "h2_2": 29
+    },
+    {
+      "shell_diameter": "450",
+      "h1_8": 19,
+      "h2_0": 20,
+      "h2_2": 20
+    },
+    {
+      "shell_diameter": "500",
+      "h1_8": 15,
+      "h2_0": 15,
+      "h2_2": 19
+    },
+    {
+      "shell_diameter": "560",
+      "h1_8": 15,
+      "h2_0": 15,
+      "h2_2": 16
+    },
+    {
+      "shell_diameter": "630",
+      "h1_8": 8,
+      "h2_0": 9,
+      "h2_2": 11
+    },
+    {
+      "shell_diameter": "710",
+      "h1_8": 8,
+      "h2_0": 9,
+      "h2_2": 9
+    },
+    {
+      "shell_diameter": "800",
+      "h1_8": 6,
+      "h2_0": 6,
+      "h2_2": 6
+    },
+    {
+      "shell_diameter": "900",
+      "h1_8": 4,
+      "h2_0": 4,
+      "h2_2": 4
+    },
+    {
+      "shell_diameter": "1000",
+      "h1_8": 4,
+      "h2_0": 4,
+      "h2_2": 4
+    },
+    {
+      "shell_diameter": "1100",
+      "h1_8": 4,
+      "h2_0": 4,
+      "h2_2": 4
+    },
+    {
+      "shell_diameter": "1200",
+      "h1_8": 4,
+      "h2_0": 4,
+      "h2_2": 4
+    }
+  ]
+}
