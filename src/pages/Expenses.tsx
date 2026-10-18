@@ -9,12 +9,15 @@ import {
   periodTitle,
 } from '../format'
 import { ExpenseForm } from '../forms'
+import { useAuth } from '../auth'
 import { useData } from '../store'
 import type { ExpenseCategory, TripExpense } from '../types'
 import { ConfirmDialog, Drawer, Empty } from '../ui'
 
 export function ExpensesPage({ onOpenTrip }: { onOpenTrip: (id: string) => void }) {
   const { state, saveExpense, deleteExpense } = useData()
+  const { can } = useAuth()
+  const allowed = can('expenses')
   const [period, setPeriod] = useState(currentPeriod())
   const [category, setCategory] = useState<ExpenseCategory | 'all'>('all')
   const [tripId, setTripId] = useState('all')
@@ -62,10 +65,13 @@ export function ExpensesPage({ onOpenTrip }: { onOpenTrip: (id: string) => void 
               </option>
             ))}
         </select>
-        <button type="button" className="btn primary" onClick={() => setEditor('new')}>
-          Добавить расход
-        </button>
+        {allowed ? (
+          <button type="button" className="btn primary" onClick={() => setEditor('new')}>
+            Добавить расход
+          </button>
+        ) : null}
       </div>
+      {allowed ? null : <p className="hint">Просмотр. Менять расходы может тот, у кого есть это право.</p>}
       <p className="muted">Итого по фильтру: {money(sumAmounts(rows))}</p>
       <section className="card">
         {rows.length === 0 ? (
@@ -102,21 +108,25 @@ export function ExpensesPage({ onOpenTrip }: { onOpenTrip: (id: string) => void 
                       <td>{expense.comment || '—'}</td>
                       <td className="num">{money(expense.amount)}</td>
                       <td className="row-actions">
-                        <button type="button" className="text-btn" onClick={() => setEditor(expense)}>
-                          Изменить
-                        </button>
-                        <button
-                          type="button"
-                          className="text-btn danger-text"
-                          onClick={() =>
-                            setConfirm({
-                              text: `Удалить расход ${money(expense.amount)}?`,
-                              run: () => void deleteExpense(expense.id),
-                            })
-                          }
-                        >
-                          Удалить
-                        </button>
+                        {allowed ? (
+                          <>
+                            <button type="button" className="text-btn" onClick={() => setEditor(expense)}>
+                              Изменить
+                            </button>
+                            <button
+                              type="button"
+                              className="text-btn danger-text"
+                              onClick={() =>
+                                setConfirm({
+                                  text: `Удалить расход ${money(expense.amount)}?`,
+                                  run: () => void deleteExpense(expense.id),
+                                })
+                              }
+                            >
+                              Удалить
+                            </button>
+                          </>
+                        ) : null}
                       </td>
                     </tr>
                   )

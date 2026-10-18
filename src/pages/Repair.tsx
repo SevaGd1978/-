@@ -2,12 +2,15 @@ import { useMemo, useState } from 'react'
 import { inPeriod, repairCost, sumAmounts } from '../calc'
 import { currentPeriod, dateRu, money, periodTitle, repairKindLabel, repairStatusLabel, repairTone } from '../format'
 import { RepairForm } from '../forms'
+import { useAuth } from '../auth'
 import { useData } from '../store'
 import type { RepairJob, RepairStatus } from '../types'
 import { Badge, ConfirmDialog, Drawer, Empty } from '../ui'
 
 export function RepairPage() {
   const { state, saveRepair, deleteRepair } = useData()
+  const { can } = useAuth()
+  const allowed = can('repairs')
   const [period, setPeriod] = useState(currentPeriod())
   const [vehicleId, setVehicleId] = useState('all')
   const [status, setStatus] = useState<RepairStatus | 'all'>('all')
@@ -65,10 +68,13 @@ export function RepairPage() {
           <option value="in_progress">В работе</option>
           <option value="done">Готово</option>
         </select>
-        <button type="button" className="btn primary" onClick={() => setEditor('new')}>
-          Новая заявка
-        </button>
+        {allowed ? (
+          <button type="button" className="btn primary" onClick={() => setEditor('new')}>
+            Новая заявка
+          </button>
+        ) : null}
       </div>
+      {allowed ? null : <p className="hint">Просмотр. Менять ремзону может тот, у кого есть это право.</p>}
       <section className="card">
         {rows.length === 0 ? (
           <Empty title="Заявок нет" text="Ремонт, ТО, шины и запчасти ведутся отдельно от рейсов." />
@@ -104,21 +110,25 @@ export function RepairPage() {
                       </td>
                       <td className="num">{money(repairCost(job))}</td>
                       <td className="row-actions">
-                        <button type="button" className="text-btn" onClick={() => setEditor(job)}>
-                          Изменить
-                        </button>
-                        <button
-                          type="button"
-                          className="text-btn danger-text"
-                          onClick={() =>
-                            setConfirm({
-                              text: `Удалить заявку «${job.description}»?`,
-                              run: () => void deleteRepair(job.id),
-                            })
-                          }
-                        >
-                          Удалить
-                        </button>
+                        {allowed ? (
+                          <>
+                            <button type="button" className="text-btn" onClick={() => setEditor(job)}>
+                              Изменить
+                            </button>
+                            <button
+                              type="button"
+                              className="text-btn danger-text"
+                              onClick={() =>
+                                setConfirm({
+                                  text: `Удалить заявку «${job.description}»?`,
+                                  run: () => void deleteRepair(job.id),
+                                })
+                              }
+                            >
+                              Удалить
+                            </button>
+                          </>
+                        ) : null}
                       </td>
                     </tr>
                   )

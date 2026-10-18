@@ -2,12 +2,15 @@ import { useMemo, useState } from 'react'
 import { debtOf, isOverdue, sumAmounts } from '../calc'
 import { dateRu, money, todayIso, tons, tripStatusLabel, tripStatuses, tripTone } from '../format'
 import { TripForm } from '../forms'
+import { useAuth } from '../auth'
 import { useData } from '../store'
 import type { TripStatus } from '../types'
 import { Badge, Drawer, Empty } from '../ui'
 
 export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
   const { state, saveTrip } = useData()
+  const { can } = useAuth()
+  const allowed = can('trips')
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<TripStatus | 'all'>('all')
   const [creating, setCreating] = useState(false)
@@ -54,10 +57,13 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
           placeholder="Номер, город, заказчик, машина"
           aria-label="Поиск рейсов"
         />
-        <button type="button" className="btn primary" onClick={() => setCreating(true)}>
-          Новый рейс
-        </button>
+        {allowed ? (
+          <button type="button" className="btn primary" onClick={() => setCreating(true)}>
+            Новый рейс
+          </button>
+        ) : null}
       </div>
+      {allowed ? null : <p className="hint">Просмотр. Менять рейсы может тот, у кого есть это право.</p>}
       <div className="chips">
         <button type="button" className="chip" aria-pressed={status === 'all'} onClick={() => setStatus('all')}>
           Все

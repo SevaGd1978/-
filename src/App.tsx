@@ -8,12 +8,15 @@ import { PaymentsPage } from './pages/Payments'
 import { RepairPage } from './pages/Repair'
 import { ReportsPage } from './pages/Reports'
 import { TripDetail } from './pages/TripDetail'
+import { LoginPage } from './pages/Login'
 import { TripList } from './pages/TripList'
+import { AccountsPage } from './pages/Accounts'
+import { useAuth } from './auth'
 import { useData } from './store'
 import { ConfirmDialog } from './ui'
 
 type Screen =
-  | { name: 'dashboard' | 'trips' | 'expenses' | 'repair' | 'payments' | 'reports' | 'fleet' }
+  | { name: 'dashboard' | 'trips' | 'expenses' | 'repair' | 'payments' | 'reports' | 'fleet' | 'accounts' }
   | { name: 'trip'; id: string }
 
 const NAV: { name: Exclude<Screen['name'], 'trip'>; label: string }[] = [
@@ -35,19 +38,28 @@ const KICKER: Record<Screen['name'], string> = {
   payments: 'Деньги заказчиков',
   reports: 'Документы',
   fleet: 'Справочник',
+  accounts: 'Люди',
 }
 
 export function App() {
+  const { user, ready: authReady, needsSetup, can, logout } = useAuth()
   const { state, ready, offline, reload, resetDemo } = useData()
   const [screen, setScreen] = useState<Screen>({ name: 'dashboard' })
   const [menuOpen, setMenuOpen] = useState(false)
   const [resetting, setResetting] = useState(false)
 
+  useEffect(() => {
+    if (screen.name === 'reports' && !can('reports')) setScreen({ name: 'dashboard' })
+    if (screen.name === 'accounts' && !can('users')) setScreen({ name: 'dashboard' })
+  }, [screen.name, can])
+
   const trip = screen.name === 'trip' ? state.trips.find((item) => item.id === screen.id) : undefined
   const heading =
     screen.name === 'trip'
       ? (trip?.number ?? 'Рейс')
-      : (NAV.find((item) => item.name === screen.name)?.label ?? 'Путевой')
+      : screen.name === 'accounts'
+        ? 'Учётные записи'
+        : (NAV.find((item) => item.name === screen.name)?.label ?? 'Путевой')
   const kicker = KICKER[screen.name]
 
   useEffect(() => {
@@ -71,6 +83,16 @@ export function App() {
     payments: debtCount,
   }
   const activeNav = screen.name === 'trip' ? 'trips' : screen.name
+  const nav = NAV.filter((item) => (item.name === 'reports' ? can('reports') : true))
+
+  if (!authReady) {
+    return (
+      <div className="gate">
+        <p className="hint">Проверяем вход…</p>
+      </div>
+    )
+  }
+  if (!user) return <LoginPage setup={needsSetup} />
 
   return (
     <div className="shell">
@@ -83,7 +105,7 @@ export function App() {
           </div>
         </div>
         <nav className="nav" aria-label="Разделы">
-          {NAV.map((item) => (
+          {nav.map((item) => (
             <button
               key={item.name}
               type="button"
@@ -94,11 +116,29 @@ export function App() {
               {counts[item.name] ? <span className="count">{counts[item.name]}</span> : null}
             </button>
           ))}
+          {can('users') ? (
+            <button
+              type="button"
+              aria-current={activeNav === 'accounts' ? 'page' : undefined}
+              onClick={() => go({ name: 'accounts' })}
+            >
+              Учётные записи
+            </button>
+          ) : null}
         </nav>
         <div className="side-foot">
-          <p>Общая база на сервере. Записи видны всем, у кого открыта эта ссылка.</p>
-          <button type="button" className="side-reset" onClick={() => setResetting(true)}>
-            Вернуть демо-данные
+          <p className="who">
+            <strong>{user.name}</strong>
+            <span>{user.username}</span>
+          </p>
+          <p>Общая база на сервере. Записи видны всем, кто вошёл.</p>
+          {can('reset') ? (
+            <button type="button" className="side-reset" onClick={() => setResetting(true)}>
+              Вернуть демо-данные
+            </button>
+          ) : null}
+          <button type="button" className="side-reset" onClick={() => void logout()}>
+            Выйти
           </button>
         </div>
       </aside>
@@ -145,6 +185,7 @@ export function App() {
           {ready && screen.name === 'payments' ? <PaymentsPage onOpenTrip={(id) => go({ name: 'trip', id })} /> : null}
           {ready && screen.name === 'reports' ? <ReportsPage /> : null}
           {ready && screen.name === 'fleet' ? <FleetPage /> : null}
+          {ready && screen.name === 'accounts' ? <AccountsPage /> : null}
         </div>
       </main>
       {resetting ? (

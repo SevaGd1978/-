@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { DriverForm, VehicleForm } from '../forms'
+import { useAuth } from '../auth'
 import { useData } from '../store'
 import type { Driver, Vehicle } from '../types'
 import { ConfirmDialog, Drawer, Empty } from '../ui'
 
 export function FleetPage() {
   const { state, saveVehicle, deleteVehicle, saveDriver, deleteDriver } = useData()
+  const { can } = useAuth()
+  const allowed = can('fleet')
   const [vehicleEditor, setVehicleEditor] = useState<Vehicle | 'new' | null>(null)
   const [driverEditor, setDriverEditor] = useState<Driver | 'new' | null>(null)
   const [confirm, setConfirm] = useState<{ text: string; run: () => void } | null>(null)
@@ -15,9 +18,11 @@ export function FleetPage() {
       <section className="card">
         <div className="section-head">
           <h2>Машины</h2>
-          <button type="button" className="btn small primary" onClick={() => setVehicleEditor('new')}>
-            Добавить
-          </button>
+          {allowed ? (
+            <button type="button" className="btn small primary" onClick={() => setVehicleEditor('new')}>
+              Добавить
+            </button>
+          ) : null}
         </div>
         {state.vehicles.length === 0 ? (
           <Empty title="Парк пуст" />
@@ -31,9 +36,11 @@ export function FleetPage() {
                     {vehicle.kind} · {vehicle.model}
                   </small>
                 </div>
-                <button type="button" className="text-btn" onClick={() => setVehicleEditor(vehicle)}>
-                  Изменить
-                </button>
+                {allowed ? (
+                  <button type="button" className="text-btn" onClick={() => setVehicleEditor(vehicle)}>
+                    Изменить
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -42,9 +49,11 @@ export function FleetPage() {
       <section className="card">
         <div className="section-head">
           <h2>Водители</h2>
-          <button type="button" className="btn small primary" onClick={() => setDriverEditor('new')}>
-            Добавить
-          </button>
+          {allowed ? (
+            <button type="button" className="btn small primary" onClick={() => setDriverEditor('new')}>
+              Добавить
+            </button>
+          ) : null}
         </div>
         {state.drivers.length === 0 ? (
           <Empty title="Водителей нет" />
@@ -56,9 +65,11 @@ export function FleetPage() {
                   <strong>{driver.name}</strong>
                   <small className="muted">{driver.phone || 'Телефон не указан'}</small>
                 </div>
-                <button type="button" className="text-btn" onClick={() => setDriverEditor(driver)}>
-                  Изменить
-                </button>
+                {allowed ? (
+                  <button type="button" className="text-btn" onClick={() => setDriverEditor(driver)}>
+                    Изменить
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>

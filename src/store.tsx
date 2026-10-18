@@ -1,4 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useAuth } from './auth'
+import { unauthorized } from './session'
 import type { Driver, Payment, RepairJob, State, Trip, TripExpense, Vehicle } from './types'
 
 interface DataApi {
@@ -51,6 +53,7 @@ function isSnapshot(value: unknown): value is Snapshot {
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth()
   const [state, setState] = useState<State>(EMPTY)
   const [ready, setReady] = useState(false)
   const [offline, setOffline] = useState(false)
@@ -81,6 +84,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const ticket = epochRef.current
     try {
       const response = await fetch('/api/state')
+      if (response.status === 401) {
+        unauthorized()
+        return
+      }
       if (!response.ok) throw new Error(String(response.status))
       const body: unknown = await response.json()
       if (ticket !== epochRef.current) return
@@ -93,10 +100,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [apply])
 
   useEffect(() => {
+    if (!user) {
+      readyRef.current = false
+      versionRef.current = 0
+      setState(EMPTY)
+      setReady(false)
+      return
+    }
     void refresh()
     const timer = window.setInterval(() => void refresh(), 4000)
     return () => window.clearInterval(timer)
-  }, [refresh])
+  }, [user, refresh])
 
   async function write(method: string, path: string, okMessage: string, body?: unknown) {
     epochRef.current += 1
@@ -108,6 +122,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       })
       const payload: unknown = await response.json().catch(() => null)
       epochRef.current += 1
+      if (response.status === 401) {
+        unauthorized()
+        return false
+      }
       if (!response.ok || !isSnapshot(payload)) {
         const error =
           payload && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string'

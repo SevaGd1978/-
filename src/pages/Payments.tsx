@@ -2,12 +2,15 @@ import { useState } from 'react'
 import { debtOf, isOverdue, sumAmounts } from '../calc'
 import { dateRu, money, payMethodLabel, todayIso } from '../format'
 import { PaymentForm } from '../forms'
+import { useAuth } from '../auth'
 import { useData } from '../store'
 import type { Payment } from '../types'
 import { Badge, ConfirmDialog, Drawer, Empty } from '../ui'
 
 export function PaymentsPage({ onOpenTrip }: { onOpenTrip: (id: string) => void }) {
   const { state, savePayment, deletePayment } = useData()
+  const { can } = useAuth()
+  const allowed = can('payments')
   const [onlyDebt, setOnlyDebt] = useState(true)
   const [editor, setEditor] = useState<{ payment?: Payment; tripId?: string } | null>(null)
   const [confirm, setConfirm] = useState<{ text: string; run: () => void } | null>(null)
@@ -58,10 +61,13 @@ export function PaymentsPage({ onOpenTrip }: { onOpenTrip: (id: string) => void 
             Все рейсы
           </button>
         </div>
-        <button type="button" className="btn primary" onClick={() => setEditor({})}>
-          Принять оплату
-        </button>
+        {allowed ? (
+          <button type="button" className="btn primary" onClick={() => setEditor({})}>
+            Принять оплату
+          </button>
+        ) : null}
       </div>
+      {allowed ? null : <p className="hint">Просмотр. Принимать оплату может тот, у кого есть это право.</p>}
 
       <section className="card">
         <div className="section-head">
@@ -103,7 +109,7 @@ export function PaymentsPage({ onOpenTrip }: { onOpenTrip: (id: string) => void 
                     <td className="num">{money(row.paid)}</td>
                     <td className="num">{money(row.debt)}</td>
                     <td className="row-actions">
-                      {row.trip.status !== 'cancelled' ? (
+                      {allowed && row.trip.status !== 'cancelled' ? (
                         <button type="button" className="text-btn" onClick={() => setEditor({ tripId: row.trip.id })}>
                           Принять
                         </button>
@@ -156,21 +162,25 @@ export function PaymentsPage({ onOpenTrip }: { onOpenTrip: (id: string) => void 
                       <td>{payMethodLabel[payment.method]}</td>
                       <td className="num">{money(payment.amount)}</td>
                       <td className="row-actions">
-                        <button type="button" className="text-btn" onClick={() => setEditor({ payment })}>
-                          Изменить
-                        </button>
-                        <button
-                          type="button"
-                          className="text-btn danger-text"
-                          onClick={() =>
-                            setConfirm({
-                              text: `Удалить оплату ${money(payment.amount)}?`,
-                              run: () => void deletePayment(payment.id),
-                            })
-                          }
-                        >
-                          Удалить
-                        </button>
+                        {allowed ? (
+                          <>
+                            <button type="button" className="text-btn" onClick={() => setEditor({ payment })}>
+                              Изменить
+                            </button>
+                            <button
+                              type="button"
+                              className="text-btn danger-text"
+                              onClick={() =>
+                                setConfirm({
+                                  text: `Удалить оплату ${money(payment.amount)}?`,
+                                  run: () => void deletePayment(payment.id),
+                                })
+                              }
+                            >
+                              Удалить
+                            </button>
+                          </>
+                        ) : null}
                       </td>
                     </tr>
                   )

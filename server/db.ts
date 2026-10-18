@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
+import { ensureAccounts } from './accounts.ts'
 import { createSeed } from '../src/seed.ts'
 import type { Driver, Payment, RepairJob, State, Trip, TripExpense, Vehicle } from '../src/types.ts'
 
@@ -82,6 +83,7 @@ export function openDatabase(file: string): Sql {
   db.exec('PRAGMA journal_mode = WAL')
   db.exec('PRAGMA busy_timeout = 5000')
   db.exec(SCHEMA)
+  ensureAccounts(db)
   const seeded = db.prepare(`SELECT value FROM meta WHERE key = 'seeded'`).get() as { value: string } | undefined
   if (!seeded) {
     transaction(db, () => {

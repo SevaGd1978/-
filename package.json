@@ -9,7 +9,7 @@
     "start": "node --experimental-sqlite --experimental-strip-types server/index.ts",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "tsx src/calc.test.ts && tsx src/reports/build.test.ts && node --experimental-sqlite --experimental-strip-types server/db.test.ts"
+    "test": "tsx src/calc.test.ts && tsx src/reports/build.test.ts && node --experimental-sqlite --experimental-strip-types server/db.test.ts && node --experimental-sqlite --experimental-strip-types server/auth.test.ts"
   },
   "dependencies": {
     "jspdf": "^4.2.1",

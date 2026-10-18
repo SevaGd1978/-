@@ -12,12 +12,17 @@ import {
   tripTone,
 } from '../format'
 import { ExpenseForm, PaymentForm, TripForm } from '../forms'
+import { useAuth } from '../auth'
 import { useData } from '../store'
 import type { Payment, Trip, TripExpense, TripStatus } from '../types'
 import { Badge, ConfirmDialog, Drawer, Empty } from '../ui'
 
 export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const { state, saveTrip, deleteTrip, saveExpense, deleteExpense, savePayment, deletePayment } = useData()
+  const { can } = useAuth()
+  const editTrip = can('trips')
+  const editExpense = can('expenses')
+  const editPayment = can('payments')
   const trip = state.trips.find((item) => item.id === id)
   const [editing, setEditing] = useState(false)
   const [expenseEditor, setExpenseEditor] = useState<TripExpense | 'new' | null>(null)
@@ -54,10 +59,13 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
         <button type="button" className="btn ghost" onClick={onBack}>
           К рейсам
         </button>
-        <button type="button" className="btn ghost" onClick={() => setEditing(true)}>
-          Редактировать
-        </button>
-        <button
+        {editTrip ? (
+          <button type="button" className="btn ghost" onClick={() => setEditing(true)}>
+            Редактировать
+          </button>
+        ) : null}
+        {editTrip ? (
+          <button
           type="button"
           className="btn danger"
           onClick={() =>
@@ -74,6 +82,7 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
         >
           Удалить
         </button>
+        ) : null}
       </div>
 
       <section className="card hero">
@@ -96,7 +105,11 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
         </p>
         <label className="status-line">
           <span>Статус рейса</span>
-          <select value={trip.status} onChange={(event) => changeStatus(event.target.value as TripStatus)}>
+          <select
+            value={trip.status}
+            disabled={!editTrip}
+            onChange={(event) => changeStatus(event.target.value as TripStatus)}
+          >
             {tripStatuses.map((item) => (
               <option key={item} value={item}>
                 {tripStatusLabel[item]}
@@ -137,9 +150,11 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
         <section className="card">
           <div className="section-head">
             <h2>Расходы</h2>
-            <button type="button" className="btn small primary" onClick={() => setExpenseEditor('new')}>
-              Добавить расход
-            </button>
+            {editExpense ? (
+              <button type="button" className="btn small primary" onClick={() => setExpenseEditor('new')}>
+                Добавить расход
+              </button>
+            ) : null}
           </div>
           {expenses.length === 0 ? (
             <Empty title="Расходов пока нет" text="Топливо, дороги, суточные и погрузка." />
@@ -164,22 +179,26 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
                       </td>
                       <td className="num">{money(expense.amount)}</td>
                       <td className="row-actions">
-                        <button type="button" className="text-btn" onClick={() => setExpenseEditor(expense)}>
-                          Изменить
-                        </button>
-                        <button
-                          type="button"
-                          className="text-btn danger-text"
-                          onClick={() =>
-                            setConfirm({
-                              text: `Удалить расход ${money(expense.amount)}?`,
-                              confirmLabel: 'Удалить',
-                              run: () => void deleteExpense(expense.id),
-                            })
-                          }
-                        >
-                          Удалить
-                        </button>
+                        {editExpense ? (
+                          <>
+                            <button type="button" className="text-btn" onClick={() => setExpenseEditor(expense)}>
+                              Изменить
+                            </button>
+                            <button
+                              type="button"
+                              className="text-btn danger-text"
+                              onClick={() =>
+                                setConfirm({
+                                  text: `Удалить расход ${money(expense.amount)}?`,
+                                  confirmLabel: 'Удалить',
+                                  run: () => void deleteExpense(expense.id),
+                                })
+                              }
+                            >
+                              Удалить
+                            </button>
+                          </>
+                        ) : null}
                       </td>
                     </tr>
                   ))}
@@ -192,9 +211,11 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
         <section className="card">
           <div className="section-head">
             <h2>Оплаты</h2>
-            <button type="button" className="btn small primary" onClick={() => setPaymentEditor('new')}>
-              Принять оплату
-            </button>
+            {editPayment ? (
+              <button type="button" className="btn small primary" onClick={() => setPaymentEditor('new')}>
+                Принять оплату
+              </button>
+            ) : null}
           </div>
           {payments.length === 0 ? (
             <Empty title="Оплат пока нет" />
@@ -222,22 +243,26 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
                       </td>
                       <td className="num">{money(payment.amount)}</td>
                       <td className="row-actions">
-                        <button type="button" className="text-btn" onClick={() => setPaymentEditor(payment)}>
-                          Изменить
-                        </button>
-                        <button
-                          type="button"
-                          className="text-btn danger-text"
-                          onClick={() =>
-                            setConfirm({
-                              text: `Удалить оплату ${money(payment.amount)}?`,
-                              confirmLabel: 'Удалить',
-                              run: () => void deletePayment(payment.id),
-                            })
-                          }
-                        >
-                          Удалить
-                        </button>
+                        {editPayment ? (
+                          <>
+                            <button type="button" className="text-btn" onClick={() => setPaymentEditor(payment)}>
+                              Изменить
+                            </button>
+                            <button
+                              type="button"
+                              className="text-btn danger-text"
+                              onClick={() =>
+                                setConfirm({
+                                  text: `Удалить оплату ${money(payment.amount)}?`,
+                                  confirmLabel: 'Удалить',
+                                  run: () => void deletePayment(payment.id),
+                                })
+                              }
+                            >
+                              Удалить
+                            </button>
+                          </>
+                        ) : null}
                       </td>
                     </tr>
                   ))}

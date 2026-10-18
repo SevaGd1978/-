@@ -82,28 +82,41 @@ try {
   const port = (server.address() as AddressInfo).port
   const base = `http://127.0.0.1:${port}`
 
-  const listed = await fetch(`${base}/api/state`)
+  const locked = await fetch(`${base}/api/state`)
+  assert.equal(locked.status, 401)
+
+  const setup = await fetch(`${base}/api/users`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ username: 'admin', name: 'Админ', password: 'password1', rights: [] }),
+  })
+  assert.equal(setup.status, 200)
+  const cookie = setup.headers.getSetCookie()[0]?.split(';')[0]
+  assert.ok(cookie)
+  const auth = { cookie, 'content-type': 'application/json' }
+
+  const listed = await fetch(`${base}/api/state`, { headers: { cookie } })
   const snapshot = (await listed.json()) as { state: { trips: { id: string }[] } }
   assert.equal(listed.status, 200)
   assert.equal(snapshot.state.trips.some((item) => item.id === 't1'), true)
 
   const bad = await fetch(`${base}/api/trips`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: auth,
     body: JSON.stringify({ id: 'nope' }),
   })
   assert.equal(bad.status, 400)
 
   const created = await fetch(`${base}/api/vehicles`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: auth,
     body: JSON.stringify({ id: 'v_http', plate: 'А000АА 77', model: 'МАЗ', kind: 'Фура' }),
   })
   const createdBody = (await created.json()) as { state: { vehicles: { id: string }[] }; version: number }
   assert.equal(created.status, 200)
   assert.equal(createdBody.state.vehicles.some((item) => item.id === 'v_http'), true)
 
-  const refused = await fetch(`${base}/api/vehicles/v1`, { method: 'DELETE' })
+  const refused = await fetch(`${base}/api/vehicles/v1`, { method: 'DELETE', headers: { cookie } })
   assert.equal(refused.status, 409)
 
   server.close()

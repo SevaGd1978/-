@@ -2,7 +2,19 @@ import { createReadStream, existsSync, statSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { extname, join, normalize, sep } from 'node:path'
 import type { DatabaseSync } from 'node:sqlite'
+import type { PublicUser, Right } from '../src/access.ts'
 import { parseDriver, parseExpense, parsePayment, parseRepair, parseTrip, parseVehicle } from '../src/records.ts'
+import {
+  createUser,
+  deleteUser,
+  listUsers,
+  login,
+  logout,
+  needsSetup,
+  parseRights,
+  updateUser,
+  userByToken,
+} from './accounts.ts'
 import {
   deleteDriver,
   deleteExpense,
@@ -20,6 +32,17 @@ import {
   saveVehicle,
   type DbResult,
 } from './db.ts'
+
+const WRITE_RIGHT: Record<string, Right> = {
+  trips: 'trips',
+  expenses: 'expenses',
+  repairs: 'repairs',
+  payments: 'payments',
+  vehicles: 'fleet',
+  drivers: 'fleet',
+}
+
+const loginFailures = new Map<string, { count: number; until: number }>()
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -51,22 +74,78 @@ export async function handleRequest(
 async function handleApi(db: DatabaseSync, req: IncomingMessage, res: ServerResponse, pathname: string) {
   const method = req.method || 'GET'
   const parts = pathname.split('/').filter(Boolean)
+  const token = readCookie(req, 'putevoy_session')
+  const actor = userByToken(db, token)
+  const secure = secureRequest(req)
   try {
+    if (method === 'GET' && pathname === '/api/session') {
+      sendJson(res, 200, { user: actor, needsSetup: needsSetup(db) })
+      return
+    }
+    if (method === 'POST' && pathname === '/api/login') {
+      await handleLogin(db, req, res, secure)
+      return
+    }
+    if (method === 'POST' && pathname === '/api/logout') {
+      logout(db, token)
+      clearSessionCookie(res, secure)
+      sendJson(res, 200, { ok: true })
+      return
+    }
+    if (pathname === '/api/users' && method === 'GET') {
+      if (!actor) return deny(res)
+      if (!actor.rights.includes('users')) return forbid(res)
+      sendJson(res, 200, { users: listUsers(db) })
+      return
+    }
+    if (pathname === '/api/users' && method === 'POST') {
+      const body = await readJson(req)
+      const created = await createFromBody(db, body, actor, secure, res)
+      if (created) return
+      return
+    }
+    if (parts[0] === 'api' && parts[1] === 'users' && parts[2] && method === 'PATCH') {
+      if (!actor) return deny(res)
+      if (!actor.rights.includes('users')) return forbid(res)
+      const body = await readJson(req)
+      const parsed = accountBody(body)
+      if (!parsed) return sendJson(res, 400, { error: 'Проверьте поля учётной записи' })
+      const updated = updateUser(db, decodeURIComponent(parts[2]), parsed, token)
+      if (!updated.ok) return sendJson(res, 400, { error: updated.error })
+      sendJson(res, 200, { user: freshActor(db, token, actor, updated.user) })
+      return
+    }
+    if (parts[0] === 'api' && parts[1] === 'users' && parts[2] && method === 'DELETE') {
+      if (!actor) return deny(res)
+      if (!actor.rights.includes('users')) return forbid(res)
+      const removed = deleteUser(db, decodeURIComponent(parts[2]))
+      if (!removed.ok) return sendJson(res, 400, { error: removed.error })
+      sendJson(res, 200, { users: listUsers(db) })
+      return
+    }
+    if (!actor) return deny(res)
     if (method === 'GET' && pathname === '/api/state') {
       sendJson(res, 200, readResult(db))
       return
     }
     if (method === 'POST' && pathname === '/api/reset') {
+      if (!actor.rights.includes('reset')) return forbid(res)
       sendResult(res, resetDemo(db))
       return
     }
     if (parts.length === 2 && method === 'POST') {
+      const right = WRITE_RIGHT[parts[1]]
+      if (!right) return sendJson(res, 404, { error: 'Неизвестный запрос' })
+      if (!actor.rights.includes(right)) return forbid(res)
       const body = await readJson(req)
       const result = writeOne(db, parts[1], body)
       sendResult(res, result)
       return
     }
     if (parts.length === 3 && method === 'DELETE') {
+      const right = WRITE_RIGHT[parts[1]]
+      if (!right) return sendJson(res, 404, { error: 'Неизвестный запрос' })
+      if (!actor.rights.includes(right)) return forbid(res)
       const result = removeOne(db, parts[1], decodeURIComponent(parts[2]))
       sendResult(res, result)
       return
@@ -76,6 +155,122 @@ async function handleApi(db: DatabaseSync, req: IncomingMessage, res: ServerResp
     const message = error instanceof Error && error.message === 'too big' ? 'Слишком большой запрос' : 'Некорректный запрос'
     sendJson(res, 400, { error: message })
   }
+}
+
+async function handleLogin(db: DatabaseSync, req: IncomingMessage, res: ServerResponse, secure: boolean) {
+  const address = clientAddress(req)
+  const blocked = loginFailures.get(address)
+  if (blocked && blocked.until > Date.now()) {
+    sendJson(res, 429, { error: 'Слишком много попыток. Подождите минуту.' })
+    return
+  }
+  const body = await readJson(req)
+  const record = body && typeof body === 'object' ? (body as Record<string, unknown>) : null
+  const username = record && typeof record.username === 'string' ? record.username : ''
+  const password = record && typeof record.password === 'string' ? record.password : ''
+  const session = login(db, username, password)
+  if (!session) {
+    const next = (blocked?.count ?? 0) + 1
+    loginFailures.set(address, next >= 8 ? { count: 0, until: Date.now() + 60_000 } : { count: next, until: 0 })
+    sendJson(res, 401, { error: 'Неверный логин или пароль' })
+    return
+  }
+  loginFailures.delete(address)
+  setSessionCookie(res, session.token, secure)
+  sendJson(res, 200, { user: session.user })
+}
+
+async function createFromBody(
+  db: DatabaseSync,
+  body: unknown,
+  actor: PublicUser | null,
+  secure: boolean,
+  res: ServerResponse,
+) {
+  const bootstrap = needsSetup(db)
+  if (!bootstrap && !actor) {
+    deny(res)
+    return true
+  }
+  if (!bootstrap && !actor?.rights.includes('users')) {
+    forbid(res)
+    return true
+  }
+  const parsed = accountBody(body)
+  if (!parsed) {
+    sendJson(res, 400, { error: 'Проверьте поля учётной записи' })
+    return true
+  }
+  const created = createUser(db, parsed, bootstrap)
+  if (!created.ok) {
+    sendJson(res, 400, { error: created.error })
+    return true
+  }
+  if (created.token) setSessionCookie(res, created.token, secure)
+  sendJson(res, 200, { user: created.user, users: listUsers(db) })
+  return true
+}
+
+function accountBody(body: unknown) {
+  if (!body || typeof body !== 'object') return null
+  const record = body as Record<string, unknown>
+  if (typeof record.username !== 'string' || typeof record.name !== 'string' || typeof record.password !== 'string') return null
+  const rights = parseRights(record.rights)
+  if (!rights) return null
+  return { username: record.username, name: record.name, password: record.password, rights }
+}
+
+function freshActor(db: DatabaseSync, token: string | null, actor: PublicUser, updated: PublicUser) {
+  if (updated.id !== actor.id) return updated
+  return userByToken(db, token) ?? updated
+}
+
+function deny(res: ServerResponse) {
+  sendJson(res, 401, { error: 'Войдите в учётную запись' })
+}
+
+function forbid(res: ServerResponse) {
+  sendJson(res, 403, { error: 'Недостаточно прав' })
+}
+
+function readCookie(req: IncomingMessage, name: string) {
+  const header = req.headers.cookie
+  if (!header) return null
+  for (const part of header.split(';')) {
+    const [key, ...rest] = part.trim().split('=')
+    if (key === name) return decodeURIComponent(rest.join('='))
+  }
+  return null
+}
+
+function setSessionCookie(res: ServerResponse, token: string, secure: boolean) {
+  const pieces = [
+    `putevoy_session=${encodeURIComponent(token)}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    `Max-Age=${14 * 24 * 60 * 60}`,
+  ]
+  if (secure) pieces.push('Secure')
+  res.setHeader('set-cookie', pieces.join('; '))
+}
+
+function clearSessionCookie(res: ServerResponse, secure: boolean) {
+  const pieces = ['putevoy_session=', 'Path=/', 'HttpOnly', 'SameSite=Lax', 'Max-Age=0']
+  if (secure) pieces.push('Secure')
+  res.setHeader('set-cookie', pieces.join('; '))
+}
+
+function secureRequest(req: IncomingMessage) {
+  const forwarded = req.headers['x-forwarded-proto']
+  const value = Array.isArray(forwarded) ? forwarded[0] : forwarded
+  return value?.split(',')[0]?.trim() === 'https'
+}
+
+function clientAddress(req: IncomingMessage) {
+  const forwarded = req.headers['x-forwarded-for']
+  const value = Array.isArray(forwarded) ? forwarded[0] : forwarded
+  return value?.split(',')[0]?.trim() || req.socket.remoteAddress || 'local'
 }
 
 function writeOne(db: DatabaseSync, kind: string, body: unknown): DbResult {
