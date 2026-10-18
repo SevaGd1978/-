@@ -45,7 +45,7 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const overdue = isOverdue(trip, debt, todayIso())
 
   function changeStatus(status: TripStatus) {
-    saveTrip({ ...trip!, status })
+    void saveTrip({ ...trip!, status })
   }
 
   return (
@@ -65,8 +65,9 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
               text: `Удалить рейс ${trip.number}? Вместе с ним исчезнут расходы (${expenses.length}) и оплаты (${payments.length}).`,
               confirmLabel: 'Удалить',
               run: () => {
-                deleteTrip(trip.id)
-                onBack()
+                void deleteTrip(trip.id).then((ok) => {
+                  if (ok) onBack()
+                })
               },
             })
           }
@@ -173,7 +174,7 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
                             setConfirm({
                               text: `Удалить расход ${money(expense.amount)}?`,
                               confirmLabel: 'Удалить',
-                              run: () => deleteExpense(expense.id),
+                              run: () => void deleteExpense(expense.id),
                             })
                           }
                         >
@@ -231,7 +232,7 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
                             setConfirm({
                               text: `Удалить оплату ${money(payment.amount)}?`,
                               confirmLabel: 'Удалить',
-                              run: () => deletePayment(payment.id),
+                              run: () => void deletePayment(payment.id),
                             })
                           }
                         >
@@ -252,17 +253,17 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
           <TripForm
             initial={trip}
             onCancel={() => setEditing(false)}
-            onSubmit={(next: Trip) => {
-              saveTrip(next)
-              setEditing(false)
+            onSubmit={async (next: Trip) => {
+              if (await saveTrip(next)) setEditing(false)
             }}
             onDelete={() =>
               setConfirm({
                 text: `Удалить рейс ${trip.number}? Вместе с ним исчезнут расходы и оплаты.`,
                 confirmLabel: 'Удалить',
                 run: () => {
-                  deleteTrip(trip.id)
-                  onBack()
+                  void deleteTrip(trip.id).then((ok) => {
+                    if (ok) onBack()
+                  })
                 },
               })
             }
@@ -276,9 +277,8 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
             fixedTripId={trip.id}
             initial={expenseEditor === 'new' ? undefined : expenseEditor}
             onCancel={() => setExpenseEditor(null)}
-            onSubmit={(expense) => {
-              saveExpense(expense)
-              setExpenseEditor(null)
+            onSubmit={async (expense) => {
+              if (await saveExpense(expense)) setExpenseEditor(null)
             }}
             onDelete={
               expenseEditor === 'new'
@@ -289,8 +289,9 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
                       text: `Удалить расход ${money(current.amount)}?`,
                       confirmLabel: 'Удалить',
                       run: () => {
-                        deleteExpense(current.id)
-                        setExpenseEditor(null)
+                        void deleteExpense(current.id).then((ok) => {
+                          if (ok) setExpenseEditor(null)
+                        })
                       },
                     })
                   }
@@ -305,9 +306,8 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
             fixedTripId={trip.id}
             initial={paymentEditor === 'new' ? undefined : paymentEditor}
             onCancel={() => setPaymentEditor(null)}
-            onSubmit={(payment) => {
-              savePayment(payment)
-              setPaymentEditor(null)
+            onSubmit={async (payment) => {
+              if (await savePayment(payment)) setPaymentEditor(null)
             }}
             onDelete={
               paymentEditor === 'new'
@@ -318,8 +318,9 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
                       text: `Удалить оплату ${money(current.amount)}?`,
                       confirmLabel: 'Удалить',
                       run: () => {
-                        deletePayment(current.id)
-                        setPaymentEditor(null)
+                        void deletePayment(current.id).then((ok) => {
+                          if (ok) setPaymentEditor(null)
+                        })
                       },
                     })
                   }

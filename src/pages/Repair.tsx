@@ -113,7 +113,7 @@ export function RepairPage() {
                           onClick={() =>
                             setConfirm({
                               text: `Удалить заявку «${job.description}»?`,
-                              run: () => deleteRepair(job.id),
+                              run: () => void deleteRepair(job.id),
                             })
                           }
                         >
@@ -133,9 +133,8 @@ export function RepairPage() {
           <RepairForm
             initial={editor === 'new' ? undefined : editor}
             onCancel={() => setEditor(null)}
-            onSubmit={(job) => {
-              saveRepair(job)
-              setEditor(null)
+            onSubmit={async (job) => {
+              if (await saveRepair(job)) setEditor(null)
             }}
             onDelete={
               editor === 'new'
@@ -145,8 +144,9 @@ export function RepairPage() {
                     setConfirm({
                       text: `Удалить заявку «${current.description}»?`,
                       run: () => {
-                        deleteRepair(current.id)
-                        setEditor(null)
+                        void deleteRepair(current.id).then((ok) => {
+                          if (ok) setEditor(null)
+                        })
                       },
                     })
                   }

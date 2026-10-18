@@ -404,6 +404,14 @@ input[readonly] { background: #f6f1ea; }
 .report-section + .report-section { margin-top: 18px; }
 .report-meta { display: grid; gap: 4px; }
 
+.net-banner {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-weight: 650;
+}
 .toast {
   position: fixed;
   right: 16px;

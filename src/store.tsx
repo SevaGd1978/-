@@ -1,28 +1,35 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { createSeed } from './seed'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Driver, Payment, RepairJob, State, Trip, TripExpense, Vehicle } from './types'
-
-const STORAGE_KEY = 'putevoy.v1'
 
 interface DataApi {
   state: State
+  ready: boolean
+  offline: boolean
   notice: string | null
-  saveTrip: (trip: Trip) => void
-  deleteTrip: (id: string) => void
-  saveExpense: (expense: TripExpense) => void
-  deleteExpense: (id: string) => void
-  saveRepair: (job: RepairJob) => void
-  deleteRepair: (id: string) => void
-  savePayment: (payment: Payment) => void
-  deletePayment: (id: string) => void
-  saveVehicle: (vehicle: Vehicle) => void
-  deleteVehicle: (id: string) => boolean
-  saveDriver: (driver: Driver) => void
-  deleteDriver: (id: string) => boolean
-  resetDemo: () => void
+  reload: () => Promise<void>
+  saveTrip: (trip: Trip) => Promise<boolean>
+  deleteTrip: (id: string) => Promise<boolean>
+  saveExpense: (expense: TripExpense) => Promise<boolean>
+  deleteExpense: (id: string) => Promise<boolean>
+  saveRepair: (job: RepairJob) => Promise<boolean>
+  deleteRepair: (id: string) => Promise<boolean>
+  savePayment: (payment: Payment) => Promise<boolean>
+  deletePayment: (id: string) => Promise<boolean>
+  saveVehicle: (vehicle: Vehicle) => Promise<boolean>
+  deleteVehicle: (id: string) => Promise<boolean>
+  saveDriver: (driver: Driver) => Promise<boolean>
+  deleteDriver: (id: string) => Promise<boolean>
+  resetDemo: () => Promise<boolean>
 }
 
+const EMPTY: State = { vehicles: [], drivers: [], trips: [], expenses: [], repairs: [], payments: [] }
+
 const DataContext = createContext<DataApi | null>(null)
+
+interface Snapshot {
+  version: number
+  state: State
+}
 
 function isState(value: unknown): value is State {
   if (!value || typeof value !== 'object') return false
@@ -37,33 +44,20 @@ function isState(value: unknown): value is State {
   )
 }
 
-function loadState(): State {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return createSeed()
-    const parsed: unknown = JSON.parse(raw)
-    if (!isState(parsed)) return createSeed()
-    return parsed
-  } catch {
-    return createSeed()
-  }
-}
-
-function upsert<T extends { id: string }>(list: T[], item: T) {
-  const index = list.findIndex((row) => row.id === item.id)
-  if (index === -1) return [item, ...list]
-  const next = list.slice()
-  next[index] = item
-  return next
+function isSnapshot(value: unknown): value is Snapshot {
+  if (!value || typeof value !== 'object') return false
+  const record = value as Partial<Snapshot>
+  return typeof record.version === 'number' && isState(record.state)
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<State>(loadState)
+  const [state, setState] = useState<State>(EMPTY)
+  const [ready, setReady] = useState(false)
+  const [offline, setOffline] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  }, [state])
+  const versionRef = useRef(0)
+  const epochRef = useRef(0)
+  const readyRef = useRef(false)
 
   useEffect(() => {
     if (!notice) return
@@ -75,91 +69,83 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setNotice(message)
   }
 
+  const apply = useCallback((snapshot: Snapshot) => {
+    versionRef.current = snapshot.version
+    readyRef.current = true
+    setState(snapshot.state)
+    setReady(true)
+    setOffline(false)
+  }, [])
+
+  const refresh = useCallback(async () => {
+    const ticket = epochRef.current
+    try {
+      const response = await fetch('/api/state')
+      if (!response.ok) throw new Error(String(response.status))
+      const body: unknown = await response.json()
+      if (ticket !== epochRef.current) return
+      if (!isSnapshot(body)) throw new Error('bad')
+      if (!readyRef.current || body.version !== versionRef.current) apply(body)
+      else setOffline(false)
+    } catch {
+      if (ticket === epochRef.current) setOffline(true)
+    }
+  }, [apply])
+
+  useEffect(() => {
+    void refresh()
+    const timer = window.setInterval(() => void refresh(), 4000)
+    return () => window.clearInterval(timer)
+  }, [refresh])
+
+  async function write(method: string, path: string, okMessage: string, body?: unknown) {
+    epochRef.current += 1
+    try {
+      const response = await fetch(path, {
+        method,
+        headers: body === undefined ? undefined : { 'content-type': 'application/json' },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      })
+      const payload: unknown = await response.json().catch(() => null)
+      epochRef.current += 1
+      if (!response.ok || !isSnapshot(payload)) {
+        const error =
+          payload && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string'
+            ? payload.error
+            : 'Не удалось записать в базу'
+        flash(error)
+        return false
+      }
+      apply(payload)
+      flash(okMessage)
+      return true
+    } catch {
+      epochRef.current += 1
+      flash('Нет связи с базой')
+      setOffline(true)
+      return false
+    }
+  }
+
   const api: DataApi = {
     state,
+    ready,
+    offline,
     notice,
-    saveTrip(trip) {
-      setState((current) => ({ ...current, trips: upsert(current.trips, trip) }))
-      flash('Рейс сохранён')
-    },
-    deleteTrip(id) {
-      setState((current) => ({
-        ...current,
-        trips: current.trips.filter((trip) => trip.id !== id),
-        expenses: current.expenses.filter((expense) => expense.tripId !== id),
-        payments: current.payments.filter((payment) => payment.tripId !== id),
-      }))
-      flash('Рейс удалён')
-    },
-    saveExpense(expense) {
-      setState((current) => ({ ...current, expenses: upsert(current.expenses, expense) }))
-      flash('Расход сохранён')
-    },
-    deleteExpense(id) {
-      setState((current) => ({
-        ...current,
-        expenses: current.expenses.filter((expense) => expense.id !== id),
-      }))
-      flash('Расход удалён')
-    },
-    saveRepair(job) {
-      setState((current) => ({ ...current, repairs: upsert(current.repairs, job) }))
-      flash('Заявка в ремзону сохранена')
-    },
-    deleteRepair(id) {
-      setState((current) => ({
-        ...current,
-        repairs: current.repairs.filter((job) => job.id !== id),
-      }))
-      flash('Заявка удалена')
-    },
-    savePayment(payment) {
-      setState((current) => ({ ...current, payments: upsert(current.payments, payment) }))
-      flash('Оплата сохранена')
-    },
-    deletePayment(id) {
-      setState((current) => ({
-        ...current,
-        payments: current.payments.filter((payment) => payment.id !== id),
-      }))
-      flash('Оплата удалена')
-    },
-    saveVehicle(vehicle) {
-      setState((current) => ({ ...current, vehicles: upsert(current.vehicles, vehicle) }))
-      flash('Машина сохранена')
-    },
-    deleteVehicle(id) {
-      if (state.trips.some((trip) => trip.vehicleId === id) || state.repairs.some((job) => job.vehicleId === id)) {
-        flash('Нельзя удалить машину: она есть в рейсе или в ремзоне')
-        return false
-      }
-      setState((current) => ({
-        ...current,
-        vehicles: current.vehicles.filter((vehicle) => vehicle.id !== id),
-      }))
-      flash('Машина удалена')
-      return true
-    },
-    saveDriver(driver) {
-      setState((current) => ({ ...current, drivers: upsert(current.drivers, driver) }))
-      flash('Водитель сохранён')
-    },
-    deleteDriver(id) {
-      if (state.trips.some((trip) => trip.driverId === id)) {
-        flash('Нельзя удалить водителя: он назначен на рейс')
-        return false
-      }
-      setState((current) => ({
-        ...current,
-        drivers: current.drivers.filter((driver) => driver.id !== id),
-      }))
-      flash('Водитель удалён')
-      return true
-    },
-    resetDemo() {
-      setState(createSeed())
-      flash('Демо-данные восстановлены')
-    },
+    reload: refresh,
+    saveTrip: (trip) => write('POST', '/api/trips', 'Рейс сохранён', trip),
+    deleteTrip: (id) => write('DELETE', `/api/trips/${id}`, 'Рейс удалён'),
+    saveExpense: (expense) => write('POST', '/api/expenses', 'Расход сохранён', expense),
+    deleteExpense: (id) => write('DELETE', `/api/expenses/${id}`, 'Расход удалён'),
+    saveRepair: (job) => write('POST', '/api/repairs', 'Заявка в ремзону сохранена', job),
+    deleteRepair: (id) => write('DELETE', `/api/repairs/${id}`, 'Заявка удалена'),
+    savePayment: (payment) => write('POST', '/api/payments', 'Оплата сохранена', payment),
+    deletePayment: (id) => write('DELETE', `/api/payments/${id}`, 'Оплата удалена'),
+    saveVehicle: (vehicle) => write('POST', '/api/vehicles', 'Машина сохранена', vehicle),
+    deleteVehicle: (id) => write('DELETE', `/api/vehicles/${id}`, 'Машина удалена'),
+    saveDriver: (driver) => write('POST', '/api/drivers', 'Водитель сохранён', driver),
+    deleteDriver: (id) => write('DELETE', `/api/drivers/${id}`, 'Водитель удалён'),
+    resetDemo: () => write('POST', '/api/reset', 'Демо-данные восстановлены'),
   }
 
   return (

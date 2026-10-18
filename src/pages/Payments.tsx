@@ -165,7 +165,7 @@ export function PaymentsPage({ onOpenTrip }: { onOpenTrip: (id: string) => void 
                           onClick={() =>
                             setConfirm({
                               text: `Удалить оплату ${money(payment.amount)}?`,
-                              run: () => deletePayment(payment.id),
+                              run: () => void deletePayment(payment.id),
                             })
                           }
                         >
@@ -187,9 +187,8 @@ export function PaymentsPage({ onOpenTrip }: { onOpenTrip: (id: string) => void 
             initial={editor.payment}
             fixedTripId={editor.payment ? undefined : editor.tripId}
             onCancel={() => setEditor(null)}
-            onSubmit={(payment) => {
-              savePayment(payment)
-              setEditor(null)
+            onSubmit={async (payment) => {
+              if (await savePayment(payment)) setEditor(null)
             }}
           />
         </Drawer>

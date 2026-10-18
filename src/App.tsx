@@ -38,7 +38,7 @@ const KICKER: Record<Screen['name'], string> = {
 }
 
 export function App() {
-  const { state, resetDemo } = useData()
+  const { state, ready, offline, reload, resetDemo } = useData()
   const [screen, setScreen] = useState<Screen>({ name: 'dashboard' })
   const [menuOpen, setMenuOpen] = useState(false)
   const [resetting, setResetting] = useState(false)
@@ -96,7 +96,7 @@ export function App() {
           ))}
         </nav>
         <div className="side-foot">
-          <p>Данные хранятся в этом браузере.</p>
+          <p>Общая база на сервере. Записи видны всем, у кого открыта эта ссылка.</p>
           <button type="button" className="side-reset" onClick={() => setResetting(true)}>
             Вернуть демо-данные
           </button>
@@ -119,19 +119,37 @@ export function App() {
             </div>
             <time dateTime={new Date().toISOString()}>{longDate(new Date())}</time>
           </header>
-          {screen.name === 'dashboard' ? <Dashboard onOpenTrip={(id) => go({ name: 'trip', id })} /> : null}
-          {screen.name === 'trips' ? <TripList onOpen={(id) => go({ name: 'trip', id })} /> : null}
-          {screen.name === 'trip' ? <TripDetail id={screen.id} onBack={() => go({ name: 'trips' })} /> : null}
-          {screen.name === 'expenses' ? <ExpensesPage onOpenTrip={(id) => go({ name: 'trip', id })} /> : null}
-          {screen.name === 'repair' ? <RepairPage /> : null}
-          {screen.name === 'payments' ? <PaymentsPage onOpenTrip={(id) => go({ name: 'trip', id })} /> : null}
-          {screen.name === 'reports' ? <ReportsPage /> : null}
-          {screen.name === 'fleet' ? <FleetPage /> : null}
+          {!ready ? (
+            <section className="card">
+              <div className="empty">
+                <strong>{offline ? 'Нет связи с базой' : 'Открываем общую базу'}</strong>
+                <span>
+                  {offline
+                    ? 'Сервер не ответил. Проверьте, что приложение запущено, и повторите.'
+                    : 'Загружаем рейсы, расходы и оплаты.'}
+                </span>
+              </div>
+              {offline ? (
+                <button type="button" className="btn" onClick={() => void reload()}>
+                  Повторить
+                </button>
+              ) : null}
+            </section>
+          ) : null}
+          {offline && ready ? <p className="net-banner">Нет связи с общей базой. Показаны последние полученные данные.</p> : null}
+          {ready && screen.name === 'dashboard' ? <Dashboard onOpenTrip={(id) => go({ name: 'trip', id })} /> : null}
+          {ready && screen.name === 'trips' ? <TripList onOpen={(id) => go({ name: 'trip', id })} /> : null}
+          {ready && screen.name === 'trip' ? <TripDetail id={screen.id} onBack={() => go({ name: 'trips' })} /> : null}
+          {ready && screen.name === 'expenses' ? <ExpensesPage onOpenTrip={(id) => go({ name: 'trip', id })} /> : null}
+          {ready && screen.name === 'repair' ? <RepairPage /> : null}
+          {ready && screen.name === 'payments' ? <PaymentsPage onOpenTrip={(id) => go({ name: 'trip', id })} /> : null}
+          {ready && screen.name === 'reports' ? <ReportsPage /> : null}
+          {ready && screen.name === 'fleet' ? <FleetPage /> : null}
         </div>
       </main>
       {resetting ? (
         <ConfirmDialog
-          text="Вернуть исходные демо-рейсы? Текущие записи в этом браузере будут заменены."
+          text="Вернуть исходные демо-рейсы? Текущие записи в общей базе будут заменены у всех."
           confirmLabel="Восстановить"
           onNo={() => setResetting(false)}
           onYes={() => {

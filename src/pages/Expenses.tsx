@@ -111,7 +111,7 @@ export function ExpensesPage({ onOpenTrip }: { onOpenTrip: (id: string) => void 
                           onClick={() =>
                             setConfirm({
                               text: `Удалить расход ${money(expense.amount)}?`,
-                              run: () => deleteExpense(expense.id),
+                              run: () => void deleteExpense(expense.id),
                             })
                           }
                         >
@@ -132,9 +132,8 @@ export function ExpensesPage({ onOpenTrip }: { onOpenTrip: (id: string) => void 
             initial={editor === 'new' ? undefined : editor}
             fixedTripId={editor === 'new' ? undefined : editor.tripId}
             onCancel={() => setEditor(null)}
-            onSubmit={(expense) => {
-              saveExpense(expense)
-              setEditor(null)
+            onSubmit={async (expense) => {
+              if (await saveExpense(expense)) setEditor(null)
             }}
           />
         </Drawer>

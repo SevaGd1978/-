@@ -127,9 +127,8 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
         <Drawer title="Новый рейс" onClose={() => setCreating(false)}>
           <TripForm
             onCancel={() => setCreating(false)}
-            onSubmit={(trip) => {
-              saveTrip(trip)
-              setCreating(false)
+            onSubmit={async (trip) => {
+              if (await saveTrip(trip)) setCreating(false)
             }}
           />
         </Drawer>

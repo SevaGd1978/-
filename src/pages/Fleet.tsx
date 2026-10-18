@@ -70,9 +70,8 @@ export function FleetPage() {
           <VehicleForm
             initial={vehicleEditor === 'new' ? undefined : vehicleEditor}
             onCancel={() => setVehicleEditor(null)}
-            onSubmit={(vehicle) => {
-              saveVehicle(vehicle)
-              setVehicleEditor(null)
+            onSubmit={async (vehicle) => {
+              if (await saveVehicle(vehicle)) setVehicleEditor(null)
             }}
             onDelete={
               vehicleEditor === 'new'
@@ -82,7 +81,9 @@ export function FleetPage() {
                     setConfirm({
                       text: `Удалить машину ${current.plate}?`,
                       run: () => {
-                        if (deleteVehicle(current.id)) setVehicleEditor(null)
+                        void deleteVehicle(current.id).then((ok) => {
+                          if (ok) setVehicleEditor(null)
+                        })
                       },
                     })
                   }
@@ -95,9 +96,8 @@ export function FleetPage() {
           <DriverForm
             initial={driverEditor === 'new' ? undefined : driverEditor}
             onCancel={() => setDriverEditor(null)}
-            onSubmit={(driver) => {
-              saveDriver(driver)
-              setDriverEditor(null)
+            onSubmit={async (driver) => {
+              if (await saveDriver(driver)) setDriverEditor(null)
             }}
             onDelete={
               driverEditor === 'new'
@@ -107,7 +107,9 @@ export function FleetPage() {
                     setConfirm({
                       text: `Удалить водителя ${current.name}?`,
                       run: () => {
-                        if (deleteDriver(current.id)) setDriverEditor(null)
+                        void deleteDriver(current.id).then((ok) => {
+                          if (ok) setDriverEditor(null)
+                        })
                       },
                     })
                   }
