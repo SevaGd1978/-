@@ -6,13 +6,14 @@ import { ExpensesPage } from './pages/Expenses'
 import { FleetPage } from './pages/Fleet'
 import { PaymentsPage } from './pages/Payments'
 import { RepairPage } from './pages/Repair'
+import { ReportsPage } from './pages/Reports'
 import { TripDetail } from './pages/TripDetail'
 import { TripList } from './pages/TripList'
 import { useData } from './store'
 import { ConfirmDialog } from './ui'
 
 type Screen =
-  | { name: 'dashboard' | 'trips' | 'expenses' | 'repair' | 'payments' | 'fleet' }
+  | { name: 'dashboard' | 'trips' | 'expenses' | 'repair' | 'payments' | 'reports' | 'fleet' }
   | { name: 'trip'; id: string }
 
 const NAV: { name: Exclude<Screen['name'], 'trip'>; label: string }[] = [
@@ -21,8 +22,20 @@ const NAV: { name: Exclude<Screen['name'], 'trip'>; label: string }[] = [
   { name: 'expenses', label: 'Расходы' },
   { name: 'repair', label: 'Ремзона' },
   { name: 'payments', label: 'Оплаты' },
+  { name: 'reports', label: 'Отчёты' },
   { name: 'fleet', label: 'Парк' },
 ]
+
+const KICKER: Record<Screen['name'], string> = {
+  dashboard: 'Диспетчерская',
+  trips: 'Маршруты',
+  trip: 'Маршруты',
+  expenses: 'Затраты в пути',
+  repair: 'Мастерская',
+  payments: 'Деньги заказчиков',
+  reports: 'Документы',
+  fleet: 'Справочник',
+}
 
 export function App() {
   const { state, resetDemo } = useData()
@@ -35,18 +48,7 @@ export function App() {
     screen.name === 'trip'
       ? (trip?.number ?? 'Рейс')
       : (NAV.find((item) => item.name === screen.name)?.label ?? 'Путевой')
-  const kicker =
-    screen.name === 'dashboard'
-      ? 'Диспетчерская'
-      : screen.name === 'trips' || screen.name === 'trip'
-        ? 'Маршруты'
-        : screen.name === 'expenses'
-          ? 'Затраты в пути'
-          : screen.name === 'repair'
-            ? 'Мастерская'
-            : screen.name === 'payments'
-              ? 'Деньги заказчиков'
-              : 'Справочник'
+  const kicker = KICKER[screen.name]
 
   useEffect(() => {
     document.title = `${heading} — Путевой`
@@ -123,6 +125,7 @@ export function App() {
           {screen.name === 'expenses' ? <ExpensesPage onOpenTrip={(id) => go({ name: 'trip', id })} /> : null}
           {screen.name === 'repair' ? <RepairPage /> : null}
           {screen.name === 'payments' ? <PaymentsPage onOpenTrip={(id) => go({ name: 'trip', id })} /> : null}
+          {screen.name === 'reports' ? <ReportsPage /> : null}
           {screen.name === 'fleet' ? <FleetPage /> : null}
         </div>
       </main>

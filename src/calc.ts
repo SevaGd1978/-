@@ -27,6 +27,13 @@ export function inPeriod(iso: string, period: string) {
   return iso.slice(0, 7) === period
 }
 
+export function inRange(iso: string, from: string, to: string) {
+  if (!iso) return false
+  if (from && iso < from) return false
+  if (to && iso > to) return false
+  return true
+}
+
 export function isOverdue(trip: Trip, debt: number, today: string) {
   return trip.status !== 'cancelled' && debt > 0 && trip.payDue !== '' && trip.payDue < today
 }

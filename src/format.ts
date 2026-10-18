@@ -67,6 +67,10 @@ export function money(value: number) {
   }).format(value)
 }
 
+export function formatPlain(value: number) {
+  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(value)
+}
+
 export function dateRu(iso: string) {
   if (!iso) return '—'
   const [year, month, day] = iso.split('-')

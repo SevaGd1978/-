@@ -28,7 +28,8 @@
 * { box-sizing: border-box; }
 body { margin: 0; min-height: 100vh; }
 button, input, select, textarea { font: inherit; color: inherit; }
-h1, h2, p { margin: 0; }
+h1, h2, h3, p { margin: 0; }
+h3 { font-size: 16px; }
 ::selection { background: #f0c7b4; }
 
 .shell {
@@ -319,6 +320,8 @@ td small, .fleet-list small { display: block; }
 .tone-slate { background: #eee7de; color: #514a43; }
 
 .btn, .text-btn, .icon-btn { cursor: pointer; }
+.btn:disabled { opacity: 0.55; cursor: progress; }
+.toolbar .field { width: 168px; flex: 0 0 auto; }
 .btn {
   border: 0;
   border-radius: 999px;
@@ -393,6 +396,14 @@ input[readonly] { background: #f6f1ea; }
 }
 .empty { padding: 22px 4px 28px; color: var(--muted); display: grid; gap: 4px; }
 .empty strong { color: var(--ink); }
+.content[data-page='reports'] { max-width: 1240px; }
+.report-toolbar { align-items: flex-end; }
+.report-toolbar select { width: 220px; flex: 0 0 auto; }
+.report-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.saved-note { color: var(--good); font-weight: 700; }
+.report-section + .report-section { margin-top: 18px; }
+.report-meta { display: grid; gap: 4px; }
+
 .toast {
   position: fixed;
   right: 16px;
