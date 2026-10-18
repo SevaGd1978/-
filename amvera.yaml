@@ -1,0 +1,12 @@
+meta:
+  environment: node
+  toolchain:
+    name: browser
+    version: "22"
+
+build:
+  # Amvera runs `npm install` with NODE_ENV=production and skips devDependencies.
+  # Vite and TypeScript live there, so install them before the real build.
+  additionalCommands: npm install --include=dev && npm run build
+  artifacts:
+    "dist/*": /
