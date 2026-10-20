@@ -15,7 +15,7 @@ import type {
 
 const TRIP_STATUS = new Set<TripStatus>(['planned', 'loading', 'in_transit', 'delivered', 'closed', 'cancelled'])
 const PARK_STATUS = new Set<ParkStatus>(['available', 'repair', 'downtime'])
-const EXPENSE_CATEGORY = new Set<ExpenseCategory>(['fuel', 'toll', 'driver', 'salary', 'loading', 'parking', 'other'])
+const EXPENSE_CATEGORY = new Set<ExpenseCategory>(['fuel', 'toll', 'platon', 'driver', 'salary', 'loading', 'parking', 'other'])
 const REPAIR_KIND = new Set<RepairKind>(['maintenance', 'repair', 'tires', 'parts', 'body'])
 const REPAIR_STATUS = new Set<RepairStatus>(['queued', 'in_progress', 'done'])
 const PAY_METHOD = new Set<PayMethod>(['bank', 'cash', 'card'])

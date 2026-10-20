@@ -13,7 +13,7 @@ import {
 import { TripForm } from '../forms'
 import { RoadMap } from '../RoadMap'
 import { useAuth } from '../auth'
-import { legKey, roadDetail, roadKm } from '../roads'
+import { federalLabel, legKey, roadDetail, roadKm } from '../roads'
 import { uid, useData } from '../store'
 import { useRoadRoutes } from '../useRoutes'
 import type { ExpenseCategory, Trip, TripExpense, TripStatus } from '../types'
@@ -187,6 +187,7 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
                   customer={selected.trip.customer}
                   route={`${selected.trip.from} — ${selected.trip.to}`}
                   distance={roadDetail(routes[legKey(selected.trip.from, selected.trip.to)], ready)}
+                  federal={federalLabel(routes[legKey(selected.trip.from, selected.trip.to)]?.federalKm)}
                   geometry={routes[legKey(selected.trip.from, selected.trip.to)]?.geometry ?? null}
                   cargo={selected.trip.cargo}
                   vehicle={
@@ -230,6 +231,7 @@ function TripCard({
   customer,
   route,
   distance,
+  federal,
   geometry,
   cargo,
   vehicle,
@@ -245,6 +247,7 @@ function TripCard({
   customer: string
   route: string
   distance: string
+  federal: string
   geometry: { type: 'LineString'; coordinates: [number, number][] } | null
   cargo: string
   vehicle: string
@@ -273,7 +276,10 @@ function TripCard({
         </div>
         <div>
           <dt>Расстояние</dt>
-          <dd>{distance}</dd>
+          <dd>
+            {distance}
+            {federal ? <small className="muted">{federal}</small> : null}
+          </dd>
         </div>
         {geometry ? <RoadMap geometry={geometry} /> : null}
         {geometry ? <p className="road-note">Километраж по автодорогам OpenStreetMap, карта © OpenStreetMap.</p> : null}
@@ -369,6 +375,7 @@ function TripExpenses({ trip, total, count }: { trip: Trip; total: number; count
         <h3>Расходы по рейсу</h3>
         <span className="muted">{count === 0 ? 'Пока нет' : `${count} на ${money(total)}`}</span>
       </div>
+      <p className="road-note">Платон пишется в расходы только за федеральные дороги из перечня Правительства: их километры × тариф. С 1 марта 2026 года это 5,19 ₽/км.</p>
       {expenses.length > 0 ? (
         <div className="table-wrap">
           <table>

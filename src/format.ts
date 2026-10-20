@@ -12,6 +12,7 @@ export const tripStatusLabel: Record<TripStatus, string> = {
 export const expenseCategoryLabel: Record<ExpenseCategory, string> = {
   fuel: 'Топливо',
   toll: 'Платные дороги',
+  platon: 'Платон',
   driver: 'Суточные водителя',
   salary: 'Зарплата',
   loading: 'Погрузка и разгрузка',

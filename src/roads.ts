@@ -6,6 +6,7 @@ export type RoadLeg = {
   from: string
   to: string
   km: number | null
+  federalKm: number | null
   minutes: number | null
   geometry: RoadGeometry | null
 }
@@ -26,6 +27,13 @@ export function roadDetail(leg: RoadLeg | undefined, ready: boolean) {
   if (leg.km === 0) return '0 км'
   const time = leg.minutes == null ? '' : ` · ${driveTime(leg.minutes)}`
   return `${new Intl.NumberFormat('ru-RU').format(leg.km)} км${time}`
+}
+
+export function federalLabel(km: number | null | undefined) {
+  if (km == null) return ''
+  if (km <= 0) return 'Федеральных дорог нет'
+  const text = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 }).format(km)
+  return `Федеральные: ${text} км`
 }
 
 function driveTime(minutes: number) {

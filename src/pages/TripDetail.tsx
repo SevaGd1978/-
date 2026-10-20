@@ -14,7 +14,7 @@ import {
 import { ExpenseForm, PaymentForm, TripForm } from '../forms'
 import { RoadMap } from '../RoadMap'
 import { useAuth } from '../auth'
-import { legKey, roadDetail } from '../roads'
+import { federalLabel, legKey, roadDetail } from '../roads'
 import { useData } from '../store'
 import { useRoadRoutes } from '../useRoutes'
 import type { Payment, Trip, TripExpense, TripStatus } from '../types'
@@ -133,6 +133,7 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
         {overdue ? <p className="banner banner-bad">Срок оплаты {dateRu(trip.payDue)} прошёл, к оплате {money(debt)}.</p> : null}
         <p>
           По автодорогам: {roadDetail(leg, ready)}
+          {federalLabel(leg?.federalKm) ? ` · ${federalLabel(leg?.federalKm)}` : ''}
         </p>
         {leg?.geometry ? <RoadMap geometry={leg.geometry} /> : null}
         {leg?.geometry ? <p className="road-note">Километраж по автодорогам OpenStreetMap, карта © OpenStreetMap.</p> : null}

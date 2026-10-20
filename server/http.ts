@@ -32,6 +32,7 @@ import {
   saveVehicle,
   type DbResult,
 } from './db.ts'
+import { syncPlaton } from './platon.ts'
 import { lookupRoutes } from './roads.ts'
 
 const WRITE_RIGHT: Record<string, Right> = {
@@ -129,7 +130,9 @@ async function handleApi(db: DatabaseSync, req: IncomingMessage, res: ServerResp
       const body = await readJson(req)
       const pairs = parseRoutePairs(body)
       if (!pairs) return sendJson(res, 400, { error: 'Укажите города маршрута' })
-      sendJson(res, 200, { routes: await lookupRoutes(db, pairs) })
+      const routes = await lookupRoutes(db, pairs)
+      const updated = syncPlaton(db)
+      sendJson(res, 200, { routes, updated })
       return
     }
     if (method === 'GET' && pathname === '/api/state') {
@@ -147,7 +150,8 @@ async function handleApi(db: DatabaseSync, req: IncomingMessage, res: ServerResp
       if (!actor.rights.includes(right)) return forbid(res)
       const body = await readJson(req)
       const result = writeOne(db, parts[1], body)
-      sendResult(res, result)
+      if (result.ok && parts[1] === 'trips') syncPlaton(db)
+      sendResult(res, result.ok ? { ok: true, ...readResult(db) } : result)
       return
     }
     if (parts.length === 3 && method === 'DELETE') {

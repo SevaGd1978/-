@@ -503,6 +503,7 @@ input[readonly] { background: #f6f1ea; }
   text-transform: uppercase;
 }
 .trip-facts dd { margin: 0; }
+.trip-facts dd small { display: block; }
 .trip-sums {
   list-style: none;
   margin: 0;

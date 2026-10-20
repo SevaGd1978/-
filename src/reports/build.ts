@@ -550,6 +550,7 @@ function expenseBreakdowns(state: State, from: string, to: string): ReportSectio
     column('Водитель', 'left', 22, 'text'),
     column('Топливо', 'right', 14, 'money'),
     column('Платные дороги', 'right', 16, 'money'),
+    column('Платон', 'right', 14, 'money'),
     column('Суточные', 'right', 14, 'money'),
     column('Зарплата', 'right', 14, 'money'),
     column('Прочее', 'right', 14, 'money'),
@@ -560,16 +561,18 @@ function expenseBreakdowns(state: State, from: string, to: string): ReportSectio
       const trip = tripById(state, tripId)
       const fuel = expenseAmount(rows, 'fuel')
       const toll = expenseAmount(rows, 'toll')
+      const platon = expenseAmount(rows, 'platon')
       const perDiem = expenseAmount(rows, 'driver')
       const salary = expenseAmount(rows, 'salary')
       const total = sumAmounts(rows)
-      const rest = round2(total - fuel - toll - perDiem - salary)
+      const rest = round2(total - fuel - toll - platon - perDiem - salary)
       return [
         trip?.number ?? '—',
         trip ? `${trip.from} – ${trip.to}` : '—',
         trip ? driverName(state, trip.driverId) : '—',
         fuel,
         toll,
+        platon,
         perDiem,
         salary,
         rest,

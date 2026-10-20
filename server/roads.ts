@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { DatabaseSync } from 'node:sqlite'
 import { foldPlace, matchCity, type CityPoint } from '../src/cities.ts'
+import { federalKilometers } from '../src/federalRoads.ts'
 import type { RoadGeometry, RoadLeg } from '../src/roads.ts'
 
 type Sql = DatabaseSync
@@ -34,6 +35,10 @@ export function ensureRoadCache(db: Sql) {
       fetched_at INTEGER NOT NULL
     );
   `)
+  const columns = db.prepare(`PRAGMA table_info(road_cache)`).all() as { name: string }[]
+  if (!columns.some((column) => column.name === 'federal_km')) {
+    db.exec(`ALTER TABLE road_cache ADD COLUMN federal_km REAL`)
+  }
 }
 
 export async function lookupRoutes(db: Sql, pairs: Pair[]): Promise<RoadLeg[]> {
@@ -67,7 +72,7 @@ export async function lookupRoutes(db: Sql, pairs: Pair[]): Promise<RoadLeg[]> {
 
 async function resolvePair(db: Sql, pair: Pair): Promise<RoadLeg> {
   if (foldPlace(pair.from) === foldPlace(pair.to)) {
-    const leg = { from: pair.from, to: pair.to, km: 0, minutes: 0, geometry: null }
+    const leg = { from: pair.from, to: pair.to, km: 0, federalKm: 0, minutes: 0, geometry: null }
     writeRoad(db, pair, leg, true)
     return leg
   }
@@ -75,8 +80,15 @@ async function resolvePair(db: Sql, pair: Pair): Promise<RoadLeg> {
   const to = await locate(db, pair.to)
   const driven = from && to ? await drive(from, to) : null
   const leg: RoadLeg = driven
-    ? { from: pair.from, to: pair.to, km: driven.km, minutes: driven.minutes, geometry: driven.geometry }
-    : { from: pair.from, to: pair.to, km: null, minutes: null, geometry: null }
+    ? {
+        from: pair.from,
+        to: pair.to,
+        km: driven.km,
+        federalKm: driven.federalKm,
+        minutes: driven.minutes,
+        geometry: driven.geometry,
+      }
+    : { from: pair.from, to: pair.to, km: null, federalKm: null, minutes: null, geometry: null }
   writeRoad(db, pair, leg, driven !== null)
   return leg
 }
@@ -127,7 +139,7 @@ async function nominatim(name: string): Promise<Point | null> {
 
 async function drive(from: Point, to: Point) {
   for (const base of ROUTERS) {
-    const url = `${base}/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=simplified&geometries=geojson&alternatives=false`
+    const url = `${base}/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=simplified&geometries=geojson&steps=true&alternatives=false`
     try {
       const response = await fetch(url, {
         headers: { 'user-agent': USER_AGENT, accept: 'application/json' },
@@ -136,13 +148,24 @@ async function drive(from: Point, to: Point) {
       if (!response.ok) continue
       const body = (await response.json()) as {
         code?: string
-        routes?: { distance?: number; duration?: number; geometry?: { type?: string; coordinates?: unknown } }[]
+        routes?: {
+          distance?: number
+          duration?: number
+          geometry?: { type?: string; coordinates?: unknown }
+          legs?: { steps?: { distance?: number; ref?: string | null }[] }[]
+        }[]
       }
       const route = body.code === 'Ok' ? body.routes?.[0] : undefined
       if (!route || typeof route.distance !== 'number' || typeof route.duration !== 'number') continue
       const geometry = line(route.geometry)
-      if (!geometry) continue
-      return { km: Math.round(route.distance / 1000), minutes: Math.round(route.duration / 60), geometry }
+      const steps = route.legs?.flatMap((leg) => leg.steps ?? []) ?? []
+      if (!geometry || steps.length === 0) continue
+      return {
+        km: Math.round(route.distance / 1000),
+        federalKm: federalKilometers(steps),
+        minutes: Math.round(route.duration / 60),
+        geometry,
+      }
     } catch {
       continue
     }
@@ -173,16 +196,26 @@ function slim(coordinates: [number, number][]) {
   return out
 }
 
+export function cachedFederalKm(db: Sql, from: string, to: string): number | null {
+  const row = db.prepare(`SELECT federal_km, ok FROM road_cache WHERE pair_key = ?`).get(pairKey(from, to)) as
+    | { federal_km: number | null; ok: number }
+    | undefined
+  if (!row?.ok || row.federal_km == null) return null
+  return row.federal_km
+}
+
 function readRoad(db: Sql, pair: Pair): RoadLeg | null {
-  const row = db.prepare(`SELECT km, minutes, geometry, ok, fetched_at FROM road_cache WHERE pair_key = ?`).get(pairKey(pair.from, pair.to)) as
-    | { km: number | null; minutes: number | null; geometry: string | null; ok: number; fetched_at: number }
+  const row = db.prepare(`SELECT km, federal_km, minutes, geometry, ok, fetched_at FROM road_cache WHERE pair_key = ?`).get(pairKey(pair.from, pair.to)) as
+    | { km: number | null; federal_km: number | null; minutes: number | null; geometry: string | null; ok: number; fetched_at: number }
     | undefined
   if (!row) return null
+  if (row.ok && row.federal_km == null) return null
   if (!row.ok && Date.now() - row.fetched_at >= FAIL_TTL_MS) return null
   return {
     from: pair.from,
     to: pair.to,
     km: row.ok ? row.km : null,
+    federalKm: row.ok ? row.federal_km : null,
     minutes: row.ok ? row.minutes : null,
     geometry: row.ok ? parseGeometry(row.geometry) : null,
   }
@@ -190,11 +223,19 @@ function readRoad(db: Sql, pair: Pair): RoadLeg | null {
 
 function writeRoad(db: Sql, pair: Pair, leg: RoadLeg, ok: boolean) {
   db.prepare(
-    `INSERT INTO road_cache (pair_key, km, minutes, geometry, ok, fetched_at) VALUES (?, ?, ?, ?, ?, ?)
+    `INSERT INTO road_cache (pair_key, km, federal_km, minutes, geometry, ok, fetched_at) VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(pair_key) DO UPDATE SET
-       km = excluded.km, minutes = excluded.minutes, geometry = excluded.geometry,
+       km = excluded.km, federal_km = excluded.federal_km, minutes = excluded.minutes, geometry = excluded.geometry,
        ok = excluded.ok, fetched_at = excluded.fetched_at`,
-  ).run(pairKey(pair.from, pair.to), ok ? leg.km : null, ok ? leg.minutes : null, ok && leg.geometry ? JSON.stringify(leg.geometry) : null, ok ? 1 : 0, Date.now())
+  ).run(
+    pairKey(pair.from, pair.to),
+    ok ? leg.km : null,
+    ok ? leg.federalKm : null,
+    ok ? leg.minutes : null,
+    ok && leg.geometry ? JSON.stringify(leg.geometry) : null,
+    ok ? 1 : 0,
+    Date.now(),
+  )
 }
 
 function parseGeometry(value: string | null): RoadGeometry | null {
