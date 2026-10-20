@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { debtOf, isOverdue, marginOf, sumAmounts } from '../calc'
 import {
   dateRu,
@@ -12,8 +12,11 @@ import {
   tripTone,
 } from '../format'
 import { ExpenseForm, PaymentForm, TripForm } from '../forms'
+import { RoadMap } from '../RoadMap'
 import { useAuth } from '../auth'
+import { legKey, roadDetail } from '../roads'
 import { useData } from '../store'
+import { useRoadRoutes } from '../useRoutes'
 import type { Payment, Trip, TripExpense, TripStatus } from '../types'
 import { Badge, ConfirmDialog, Drawer, Empty } from '../ui'
 
@@ -28,6 +31,11 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const [expenseEditor, setExpenseEditor] = useState<TripExpense | 'new' | null>(null)
   const [paymentEditor, setPaymentEditor] = useState<Payment | 'new' | null>(null)
   const [confirm, setConfirm] = useState<{ text: string; confirmLabel: string; run: () => void } | null>(null)
+  const routePairs = useMemo(
+    () => (trip ? [{ from: trip.from, to: trip.to }] : []),
+    [trip],
+  )
+  const { routes, ready } = useRoadRoutes(routePairs)
 
   if (!trip) {
     return (
@@ -48,6 +56,7 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const debt = debtOf(trip, paid)
   const margin = marginOf(trip, expenseTotal)
   const overdue = isOverdue(trip, debt, todayIso())
+  const leg = routes[legKey(trip.from, trip.to)]
 
   function changeStatus(status: TripStatus) {
     void saveTrip({ ...trip!, status })
@@ -122,6 +131,11 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
           <p className="banner">Рейс отменён. Долг не начисляется, уже понесённые расходы остаются в учёте.</p>
         ) : null}
         {overdue ? <p className="banner banner-bad">Срок оплаты {dateRu(trip.payDue)} прошёл, к оплате {money(debt)}.</p> : null}
+        <p>
+          По автодорогам: {roadDetail(leg, ready)}
+        </p>
+        {leg?.geometry ? <RoadMap geometry={leg.geometry} /> : null}
+        {leg?.geometry ? <p className="road-note">Километраж по автодорогам OpenStreetMap, карта © OpenStreetMap.</p> : null}
       </section>
 
       <section className="econ">
@@ -157,7 +171,7 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
             ) : null}
           </div>
           {expenses.length === 0 ? (
-            <Empty title="Расходов пока нет" text="Топливо, дороги, суточные и погрузка." />
+            <Empty title="Расходов пока нет" text="Топливо, зарплата, дороги и погрузка." />
           ) : (
             <div className="table-wrap">
               <table>

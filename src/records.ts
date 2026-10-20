@@ -6,6 +6,7 @@ import type {
   RepairJob,
   RepairKind,
   RepairStatus,
+  ParkStatus,
   Trip,
   TripExpense,
   TripStatus,
@@ -13,7 +14,8 @@ import type {
 } from './types'
 
 const TRIP_STATUS = new Set<TripStatus>(['planned', 'loading', 'in_transit', 'delivered', 'closed', 'cancelled'])
-const EXPENSE_CATEGORY = new Set<ExpenseCategory>(['fuel', 'toll', 'driver', 'loading', 'parking', 'other'])
+const PARK_STATUS = new Set<ParkStatus>(['available', 'repair', 'downtime'])
+const EXPENSE_CATEGORY = new Set<ExpenseCategory>(['fuel', 'toll', 'driver', 'salary', 'loading', 'parking', 'other'])
 const REPAIR_KIND = new Set<RepairKind>(['maintenance', 'repair', 'tires', 'parts', 'body'])
 const REPAIR_STATUS = new Set<RepairStatus>(['queued', 'in_progress', 'done'])
 const PAY_METHOD = new Set<PayMethod>(['bank', 'cash', 'card'])
@@ -59,14 +61,21 @@ function tons(value: unknown): number | null {
 export function parseVehicle(value: unknown): Vehicle | null {
   const row = record(value)
   if (!row) return null
+  const status = row.status
   const parsed = {
     id: id(row.id),
     plate: text(row.plate, 32),
     model: text(row.model, 80),
     kind: text(row.kind, 80),
+    status:
+      status == null
+        ? 'available'
+        : typeof status === 'string' && PARK_STATUS.has(status as ParkStatus)
+          ? (status as ParkStatus)
+          : null,
   }
-  if (!parsed.id || !parsed.plate || !parsed.model || !parsed.kind) return null
-  return { id: parsed.id, plate: parsed.plate, model: parsed.model, kind: parsed.kind }
+  if (!parsed.id || !parsed.plate || !parsed.model || !parsed.kind || !parsed.status) return null
+  return { id: parsed.id, plate: parsed.plate, model: parsed.model, kind: parsed.kind, status: parsed.status }
 }
 
 export function parseDriver(value: unknown): Driver | null {

@@ -11,13 +11,21 @@ import {
   repairKinds,
   repairStatusLabel,
   repairStatuses,
+  parkStatuses,
   todayIso,
   tripStatusLabel,
   tripStatuses,
+  vehicleStatusLabel,
 } from './format'
+import { vehicleDuty } from './fleetStatus'
 import { uid, useData } from './store'
 import type { Driver, Payment, RepairJob, Trip, TripExpense, Vehicle } from './types'
 import { Field, FormError, FormFooter } from './ui'
+
+function vehicleOption(vehicle: Vehicle, trips: Trip[]) {
+  const duty = vehicleDuty(vehicle.status, trips, vehicle.id)
+  return `${vehicle.plate} · ${vehicle.model} · ${vehicleStatusLabel[duty]}`
+}
 
 function amountText(value: number) {
   return value ? String(value) : ''
@@ -111,7 +119,7 @@ export function TripForm({
           <option value="">Выберите машину</option>
           {state.vehicles.map((vehicle) => (
             <option key={vehicle.id} value={vehicle.id}>
-              {vehicle.plate} · {vehicle.model}
+              {vehicleOption(vehicle, state.trips)}
             </option>
           ))}
         </select>
@@ -325,7 +333,7 @@ export function RepairForm({
           <option value="">Выберите машину</option>
           {state.vehicles.map((vehicle) => (
             <option key={vehicle.id} value={vehicle.id}>
-              {vehicle.plate} · {vehicle.model}
+              {vehicleOption(vehicle, state.trips)}
             </option>
           ))}
         </select>
@@ -508,10 +516,13 @@ export function VehicleForm({
   onCancel: () => void
   onDelete?: () => void
 }) {
+  const { state } = useData()
   const [plate, setPlate] = useState(initial?.plate ?? '')
   const [model, setModel] = useState(initial?.model ?? '')
   const [kind, setKind] = useState(initial?.kind ?? 'Фура')
+  const [status, setStatus] = useState(initial?.status ?? 'available')
   const [error, setError] = useState('')
+  const duty = initial ? vehicleDuty(status, state.trips, initial.id) : status
 
   function submit(event: FormEvent) {
     event.preventDefault()
@@ -524,6 +535,7 @@ export function VehicleForm({
       plate: plate.trim().toUpperCase(),
       model: model.trim(),
       kind: kind.trim(),
+      status,
     })
   }
 
@@ -538,6 +550,21 @@ export function VehicleForm({
       <Field label="Тип">
         <input value={kind} onChange={(event) => setKind(event.target.value)} placeholder="Фура" />
       </Field>
+      <Field label="Статус в парке" wide>
+        <select value={status} onChange={(event) => setStatus(event.target.value as Vehicle['status'])}>
+          {parkStatuses.map((item) => (
+            <option key={item} value={item}>
+              {vehicleStatusLabel[item]}
+            </option>
+          ))}
+        </select>
+      </Field>
+      {duty === 'on_trip' || duty === 'loading' ? (
+        <p className="hint wide">
+          Сейчас машина {vehicleStatusLabel[duty].toLowerCase()}. Это берётся из открытого рейса. Статус парка снова
+          станет «{vehicleStatusLabel[status]}», когда рейс закроют или отменят.
+        </p>
+      ) : null}
       <div className="wide">
         <FormError text={error} />
         <FormFooter onCancel={onCancel} onDelete={onDelete} />

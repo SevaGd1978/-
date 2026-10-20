@@ -1,4 +1,4 @@
-import type { ExpenseCategory, PayMethod, RepairKind, RepairStatus, TripStatus } from './types'
+import type { ExpenseCategory, ParkStatus, PayMethod, RepairKind, RepairStatus, TripStatus, VehicleStatus } from './types'
 
 export const tripStatusLabel: Record<TripStatus, string> = {
   planned: 'Запланирован',
@@ -13,6 +13,7 @@ export const expenseCategoryLabel: Record<ExpenseCategory, string> = {
   fuel: 'Топливо',
   toll: 'Платные дороги',
   driver: 'Суточные водителя',
+  salary: 'Зарплата',
   loading: 'Погрузка и разгрузка',
   parking: 'Стоянка',
   other: 'Прочее',
@@ -38,7 +39,17 @@ export const payMethodLabel: Record<PayMethod, string> = {
   card: 'Карта',
 }
 
+export const vehicleStatusLabel: Record<VehicleStatus, string> = {
+  available: 'Свободна',
+  on_trip: 'В рейсе',
+  loading: 'На погрузке',
+  repair: 'В ремонте',
+  downtime: 'Простой',
+}
+
 export const tripStatuses = Object.keys(tripStatusLabel) as TripStatus[]
+export const vehicleStatuses = Object.keys(vehicleStatusLabel) as VehicleStatus[]
+export const parkStatuses: ParkStatus[] = ['available', 'repair', 'downtime']
 export const expenseCategories = Object.keys(expenseCategoryLabel) as ExpenseCategory[]
 export const repairKinds = Object.keys(repairKindLabel) as RepairKind[]
 export const repairStatuses = Object.keys(repairStatusLabel) as RepairStatus[]
@@ -49,6 +60,14 @@ export function tripTone(status: TripStatus) {
   if (status === 'in_transit') return 'info'
   if (status === 'delivered') return 'good'
   if (status === 'cancelled') return 'bad'
+  return 'slate'
+}
+
+export function vehicleTone(status: VehicleStatus) {
+  if (status === 'available') return 'good'
+  if (status === 'on_trip') return 'info'
+  if (status === 'loading') return 'warn'
+  if (status === 'repair') return 'bad'
   return 'slate'
 }
 

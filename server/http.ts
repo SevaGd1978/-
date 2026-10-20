@@ -32,6 +32,7 @@ import {
   saveVehicle,
   type DbResult,
 } from './db.ts'
+import { lookupRoutes } from './roads.ts'
 
 const WRITE_RIGHT: Record<string, Right> = {
   trips: 'trips',
@@ -124,6 +125,13 @@ async function handleApi(db: DatabaseSync, req: IncomingMessage, res: ServerResp
       return
     }
     if (!actor) return deny(res)
+    if (method === 'POST' && pathname === '/api/routes') {
+      const body = await readJson(req)
+      const pairs = parseRoutePairs(body)
+      if (!pairs) return sendJson(res, 400, { error: 'Укажите города маршрута' })
+      sendJson(res, 200, { routes: await lookupRoutes(db, pairs) })
+      return
+    }
     if (method === 'GET' && pathname === '/api/state') {
       sendJson(res, 200, readResult(db))
       return
@@ -310,6 +318,28 @@ function removeOne(db: DatabaseSync, kind: string, id: string): DbResult {
   if (kind === 'vehicles') return deleteVehicle(db, id)
   if (kind === 'drivers') return deleteDriver(db, id)
   return { ok: false, status: 404, error: 'Неизвестный запрос' }
+}
+
+function parseRoutePairs(body: unknown): { from: string; to: string }[] | null {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null
+  const pairs = (body as { pairs?: unknown }).pairs
+  if (!Array.isArray(pairs) || pairs.length > 40) return null
+  const parsed: { from: string; to: string }[] = []
+  for (const item of pairs) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return null
+    const from = place((item as { from?: unknown }).from)
+    const to = place((item as { to?: unknown }).to)
+    if (!from || !to) return null
+    parsed.push({ from, to })
+  }
+  return parsed
+}
+
+function place(value: unknown) {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim().replace(/\s+/g, ' ')
+  if (!trimmed || trimmed.length > 80) return null
+  return trimmed
 }
 
 function fail(error: string): DbResult {

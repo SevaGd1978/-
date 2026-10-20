@@ -112,9 +112,16 @@ try {
     headers: auth,
     body: JSON.stringify({ id: 'v_http', plate: 'А000АА 77', model: 'МАЗ', kind: 'Фура' }),
   })
-  const createdBody = (await created.json()) as { state: { vehicles: { id: string }[] }; version: number }
+  const createdBody = (await created.json()) as { state: { vehicles: { id: string; status: string }[] }; version: number }
   assert.equal(created.status, 200)
-  assert.equal(createdBody.state.vehicles.some((item) => item.id === 'v_http'), true)
+  assert.equal(createdBody.state.vehicles.find((item) => item.id === 'v_http')?.status, 'available')
+
+  const duty = await fetch(`${base}/api/vehicles`, {
+    method: 'POST',
+    headers: auth,
+    body: JSON.stringify({ id: 'v_duty', plate: 'В111ВВ 77', model: 'МАЗ', kind: 'Фура', status: 'on_trip' }),
+  })
+  assert.equal(duty.status, 400)
 
   const refused = await fetch(`${base}/api/vehicles/v1`, { method: 'DELETE', headers: { cookie } })
   assert.equal(refused.status, 409)

@@ -1,13 +1,16 @@
-import { debtOf, inRange, marginOf, repairCost, round2, sumAmounts } from '../calc'
+import { debtOf, inRange, isOverdue, marginOf, repairCost, round2, sumAmounts } from '../calc'
 import {
   dateRu,
   expenseCategories,
   expenseCategoryLabel,
   payMethodLabel,
+  payMethods,
   repairKindLabel,
   repairKinds,
   repairStatusLabel,
+  repairStatuses,
   tripStatusLabel,
+  tripStatuses,
 } from '../format'
 import type { State, Trip } from '../types'
 
@@ -51,32 +54,32 @@ export const reportCatalog: { kind: ReportKind; label: string; text: string }[] 
   {
     kind: 'summary',
     label: 'Сводка',
-    text: 'Полученные деньги, расходы рейсов, ремзона и результат за период.',
+    text: 'Итог периода, статьи затрат, ремзона, долги и разрезы по заказчикам, водителям и машинам.',
   },
   {
     kind: 'trips',
     label: 'Рейсы',
-    text: 'Реестр рейсов со ставкой, расходами, оплатой, долгом и маржой.',
+    text: 'Реестр рейсов и сводки по заказчикам, водителям, машинам и статусам.',
   },
   {
     kind: 'expenses',
     label: 'Расходы',
-    text: 'Топливо, дороги, суточные и остальные затраты по дате расхода.',
+    text: 'Все затраты, статьи включая зарплату, и разложение по рейсам и водителям.',
   },
   {
     kind: 'repairs',
     label: 'Ремзона',
-    text: 'Заявки мастерской: запчасти, работа и статус.',
+    text: 'Заявки мастерской и итоги по машинам, видам работ и статусам.',
   },
   {
     kind: 'payments',
     label: 'Оплаты',
-    text: 'Поступления от заказчиков по дате оплаты.',
+    text: 'Поступления и сводки по заказчикам и способам оплаты.',
   },
   {
     kind: 'debts',
     label: 'Долги',
-    text: 'Непогашенные рейсы, вышедшие в выбранные даты.',
+    text: 'Непогашенные рейсы и долг по заказчикам, в том числе просроченный.',
   },
 ]
 
@@ -90,11 +93,13 @@ const titles: Record<ReportKind, string> = {
 }
 
 const notes: Record<ReportKind, string> = {
-  summary: 'Результат = получено − расходы по рейсам − ремзона. Долг считается по рейсам, вышедшим в этот период, с учётом всех их оплат.',
-  trips: 'Рейсы отобраны по дате выхода. Расходы и оплаты показаны целиком, даже если часть из них попала в другой месяц.',
-  expenses: 'Строки отобраны по дате расхода.',
-  repairs: 'Заявки отобраны по дате постановки в ремзону.',
-  payments: 'Оплаты отобраны по дате поступления денег.',
+  summary:
+    'Результат = получено − расходы по рейсам − ремзона. Долг и разрезы по рейсам считаются по дате выхода, с учётом всех расходов и оплат этих рейсов. Статьи затрат и ремзона — по своим датам.',
+  trips:
+    'Рейсы отобраны по дате выхода. Расходы, зарплата и оплаты в реестре и сводках показаны целиком, даже если часть из них попала в другой месяц.',
+  expenses: 'Строки и сводки отобраны по дате расхода. Зарплата выделена отдельной статьёй, даже если за период её не было.',
+  repairs: 'Заявки и сводки отобраны по дате постановки в ремзону.',
+  payments: 'Оплаты и сводки отобраны по дате поступления денег.',
   debts: 'Только рейсы с остатком к оплате. Просрочка считается на момент формирования отчёта.',
 }
 
@@ -172,14 +177,112 @@ function driverName(state: State, id: string) {
 }
 
 function tripEconomics(state: State, trip: Trip) {
-  const expenses = sumAmounts(state.expenses.filter((expense) => expense.tripId === trip.id))
+  const expenses = state.expenses.filter((expense) => expense.tripId === trip.id)
+  const spend = sumAmounts(expenses)
   const paid = sumAmounts(state.payments.filter((payment) => payment.tripId === trip.id))
   return {
-    expenses,
+    expenses: spend,
+    salary: sumAmounts(expenses.filter((expense) => expense.category === 'salary')),
     paid,
     debt: debtOf(trip, paid),
-    margin: marginOf(trip, expenses),
+    margin: marginOf(trip, spend),
   }
+}
+
+interface EconBucket {
+  count: number
+  weight: number
+  rate: number
+  expenses: number
+  salary: number
+  paid: number
+  debt: number
+  margin: number
+}
+
+function emptyBucket(): EconBucket {
+  return { count: 0, weight: 0, rate: 0, expenses: 0, salary: 0, paid: 0, debt: 0, margin: 0 }
+}
+
+function absorb(bucket: EconBucket, state: State, trip: Trip) {
+  const economics = tripEconomics(state, trip)
+  bucket.count += 1
+  bucket.weight = round2(bucket.weight + trip.weightTons)
+  bucket.rate = round2(bucket.rate + trip.rate)
+  bucket.expenses = round2(bucket.expenses + economics.expenses)
+  bucket.salary = round2(bucket.salary + economics.salary)
+  bucket.paid = round2(bucket.paid + economics.paid)
+  bucket.debt = round2(bucket.debt + economics.debt)
+  bucket.margin = round2(bucket.margin + economics.margin)
+}
+
+const econColumns = [
+  column('Рейсов', 'right', 12, 'number'),
+  column('Вес, т', 'right', 12, 'number'),
+  column('Ставка', 'right', 14, 'money'),
+  column('Расходы', 'right', 14, 'money'),
+  column('Зарплата', 'right', 14, 'money'),
+  column('Оплачено', 'right', 14, 'money'),
+  column('Долг', 'right', 14, 'money'),
+  column('Маржа', 'right', 14, 'money'),
+]
+
+function econValues(bucket: EconBucket) {
+  return [bucket.count, bucket.weight, bucket.rate, bucket.expenses, bucket.salary, bucket.paid, bucket.debt, bucket.margin]
+}
+
+function groupedSection(
+  title: string,
+  label: string,
+  groups: Map<string, EconBucket>,
+  keepOrder = false,
+): ReportSection {
+  const columns = [column(label, 'left', 32, 'text'), ...econColumns]
+  const entries = [...groups.entries()]
+  if (!keepOrder) entries.sort((a, b) => b[1].rate - a[1].rate || a[0].localeCompare(b[0], 'ru'))
+  const rows = entries.map(([name, bucket]) => [name, ...econValues(bucket)])
+  return { title, columns, rows, totals: totalRow(rows, columns) }
+}
+
+function groupTrips(
+  state: State,
+  trips: Trip[],
+  title: string,
+  label: string,
+  keyOf: (trip: Trip) => string,
+) {
+  const groups = new Map<string, EconBucket>()
+  for (const trip of trips) {
+    const key = keyOf(trip)
+    const bucket = groups.get(key) ?? emptyBucket()
+    absorb(bucket, state, trip)
+    groups.set(key, bucket)
+  }
+  return groupedSection(title, label, groups)
+}
+
+function periodTrips(state: State, from: string, to: string) {
+  return state.trips
+    .filter((trip) => inRange(trip.date, from, to))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.number.localeCompare(b.number))
+}
+
+function tripBreakdowns(state: State, from: string, to: string): ReportSection[] {
+  const trips = periodTrips(state, from, to)
+  const byStatus = new Map<string, EconBucket>()
+  for (const status of tripStatuses) {
+    const matched = trips.filter((trip) => trip.status === status)
+    if (matched.length === 0) continue
+    const bucket = emptyBucket()
+    for (const trip of matched) absorb(bucket, state, trip)
+    byStatus.set(tripStatusLabel[status], bucket)
+  }
+  return [
+    groupTrips(state, trips, 'По заказчикам', 'Заказчик', (trip) => trip.customer),
+    groupTrips(state, trips, 'По водителям', 'Водитель', (trip) => driverName(state, trip.driverId)),
+    groupTrips(state, trips, 'По машинам', 'Машина', (trip) => vehicleLabel(state, trip.vehicleId)),
+    groupedSection('По статусам', 'Статус', byStatus, true),
+  ]
 }
 
 function summarySections(state: State, from: string, to: string): ReportSection[] {
@@ -254,6 +357,8 @@ function summarySections(state: State, from: string, to: string): ReportSection[
       rows: customerRows,
       totals: totalRow(customerRows, customerColumns),
     },
+    ...tripBreakdowns(state, from, to),
+    laborSection(state, from, to),
   ]
 }
 
@@ -417,20 +522,230 @@ function debtSection(state: State, from: string, to: string, today: string): Rep
   return { title: 'Долги', columns, rows, totals: totalRow(rows, columns) }
 }
 
+function expenseAmount(rows: { category: string; amount: number }[], category: string) {
+  return sumAmounts(rows.filter((row) => row.category === category))
+}
+
+function expenseBreakdowns(state: State, from: string, to: string): ReportSection[] {
+  const expenses = state.expenses.filter((expense) => inRange(expense.date, from, to))
+  const categoryColumns = [
+    column('Статья', 'left', 28, 'text'),
+    column('Строк', 'right', 12, 'number'),
+    column('Сумма', 'right', 16, 'money'),
+  ]
+  const categoryRows = expenseCategories.map((category) => {
+    const matched = expenses.filter((expense) => expense.category === category)
+    return [expenseCategoryLabel[category], matched.length, sumAmounts(matched)]
+  })
+
+  const byTrip = new Map<string, typeof expenses>()
+  for (const expense of expenses) {
+    const list = byTrip.get(expense.tripId) ?? []
+    list.push(expense)
+    byTrip.set(expense.tripId, list)
+  }
+  const tripColumns = [
+    column('Рейс', 'left', 12, 'text'),
+    column('Маршрут', 'left', 28, 'text'),
+    column('Водитель', 'left', 22, 'text'),
+    column('Топливо', 'right', 14, 'money'),
+    column('Платные дороги', 'right', 16, 'money'),
+    column('Суточные', 'right', 14, 'money'),
+    column('Зарплата', 'right', 14, 'money'),
+    column('Прочее', 'right', 14, 'money'),
+    column('Итого', 'right', 14, 'money'),
+  ]
+  const tripRows = [...byTrip.entries()]
+    .map(([tripId, rows]) => {
+      const trip = tripById(state, tripId)
+      const fuel = expenseAmount(rows, 'fuel')
+      const toll = expenseAmount(rows, 'toll')
+      const perDiem = expenseAmount(rows, 'driver')
+      const salary = expenseAmount(rows, 'salary')
+      const total = sumAmounts(rows)
+      const rest = round2(total - fuel - toll - perDiem - salary)
+      return [
+        trip?.number ?? '—',
+        trip ? `${trip.from} – ${trip.to}` : '—',
+        trip ? driverName(state, trip.driverId) : '—',
+        fuel,
+        toll,
+        perDiem,
+        salary,
+        rest,
+        total,
+      ]
+    })
+    .sort((a, b) => String(a[0]).localeCompare(String(b[0]), 'ru'))
+
+  const byDriver = new Map<string, { perDiem: number; salary: number; other: number }>()
+  for (const expense of expenses) {
+    const trip = tripById(state, expense.tripId)
+    const name = trip ? driverName(state, trip.driverId) : '—'
+    const bucket = byDriver.get(name) ?? { perDiem: 0, salary: 0, other: 0 }
+    if (expense.category === 'driver') bucket.perDiem = round2(bucket.perDiem + expense.amount)
+    else if (expense.category === 'salary') bucket.salary = round2(bucket.salary + expense.amount)
+    else bucket.other = round2(bucket.other + expense.amount)
+    byDriver.set(name, bucket)
+  }
+  const driverColumns = [
+    column('Водитель', 'left', 24, 'text'),
+    column('Суточные', 'right', 14, 'money'),
+    column('Зарплата', 'right', 14, 'money'),
+    column('Прочие расходы', 'right', 16, 'money'),
+    column('Итого', 'right', 14, 'money'),
+  ]
+  const driverRows = [...byDriver.entries()]
+    .sort((a, b) => b[1].salary + b[1].perDiem - (a[1].salary + a[1].perDiem) || a[0].localeCompare(b[0], 'ru'))
+    .map(([name, bucket]) => [
+      name,
+      bucket.perDiem,
+      bucket.salary,
+      bucket.other,
+      round2(bucket.perDiem + bucket.salary + bucket.other),
+    ])
+
+  return [
+    { title: 'По статьям', columns: categoryColumns, rows: categoryRows, totals: totalRow(categoryRows, categoryColumns) },
+    { title: 'По рейсам', columns: tripColumns, rows: tripRows, totals: totalRow(tripRows, tripColumns) },
+    { title: 'По водителям', columns: driverColumns, rows: driverRows, totals: totalRow(driverRows, driverColumns) },
+  ]
+}
+
+function laborSection(state: State, from: string, to: string): ReportSection {
+  const expenses = state.expenses.filter((expense) => inRange(expense.date, from, to))
+  const columns = [
+    column('Водитель', 'left', 24, 'text'),
+    column('Суточные', 'right', 14, 'money'),
+    column('Зарплата', 'right', 14, 'money'),
+    column('Итого', 'right', 14, 'money'),
+  ]
+  const groups = new Map<string, { perDiem: number; salary: number }>()
+  for (const expense of expenses) {
+    if (expense.category !== 'driver' && expense.category !== 'salary') continue
+    const trip = tripById(state, expense.tripId)
+    const name = trip ? driverName(state, trip.driverId) : '—'
+    const bucket = groups.get(name) ?? { perDiem: 0, salary: 0 }
+    if (expense.category === 'driver') bucket.perDiem = round2(bucket.perDiem + expense.amount)
+    else bucket.salary = round2(bucket.salary + expense.amount)
+    groups.set(name, bucket)
+  }
+  const rows = [...groups.entries()]
+    .sort((a, b) => b[1].salary + b[1].perDiem - (a[1].salary + a[1].perDiem) || a[0].localeCompare(b[0], 'ru'))
+    .map(([name, bucket]) => [name, bucket.perDiem, bucket.salary, round2(bucket.perDiem + bucket.salary)])
+  return { title: 'Оплата труда', columns, rows, totals: totalRow(rows, columns) }
+}
+
+function repairBreakdowns(state: State, from: string, to: string): ReportSection[] {
+  const jobs = state.repairs.filter((job) => inRange(job.date, from, to))
+  const vehicleColumns = [
+    column('Машина', 'left', 28, 'text'),
+    column('Заявок', 'right', 12, 'number'),
+    column('Запчасти', 'right', 14, 'money'),
+    column('Работа', 'right', 14, 'money'),
+    column('Итого', 'right', 14, 'money'),
+  ]
+  const byVehicle = new Map<string, { count: number; parts: number; labor: number }>()
+  for (const job of jobs) {
+    const name = vehicleLabel(state, job.vehicleId)
+    const bucket = byVehicle.get(name) ?? { count: 0, parts: 0, labor: 0 }
+    bucket.count += 1
+    bucket.parts = round2(bucket.parts + job.partsCost)
+    bucket.labor = round2(bucket.labor + job.laborCost)
+    byVehicle.set(name, bucket)
+  }
+  const vehicleRows = [...byVehicle.entries()]
+    .sort((a, b) => b[1].parts + b[1].labor - (a[1].parts + a[1].labor) || a[0].localeCompare(b[0], 'ru'))
+    .map(([name, bucket]) => [name, bucket.count, bucket.parts, bucket.labor, round2(bucket.parts + bucket.labor)])
+
+  const kindColumns = [column('Вид работ', 'left', 20, 'text'), column('Заявок', 'right', 12, 'number'), column('Сумма', 'right', 16, 'money')]
+  const kindRows = repairKinds.map((kind) => {
+    const matched = jobs.filter((job) => job.kind === kind)
+    return [repairKindLabel[kind], matched.length, sumAmounts(matched.map((job) => ({ amount: repairCost(job) })))]
+  })
+
+  const statusColumns = [column('Статус', 'left', 16, 'text'), column('Заявок', 'right', 12, 'number'), column('Сумма', 'right', 16, 'money')]
+  const statusRows = repairStatuses.map((status) => {
+    const matched = jobs.filter((job) => job.status === status)
+    return [repairStatusLabel[status], matched.length, sumAmounts(matched.map((job) => ({ amount: repairCost(job) })))]
+  })
+
+  return [
+    { title: 'По машинам', columns: vehicleColumns, rows: vehicleRows, totals: totalRow(vehicleRows, vehicleColumns) },
+    { title: 'По видам работ', columns: kindColumns, rows: kindRows, totals: totalRow(kindRows, kindColumns) },
+    { title: 'По статусам заявок', columns: statusColumns, rows: statusRows, totals: totalRow(statusRows, statusColumns) },
+  ]
+}
+
+function paymentBreakdowns(state: State, from: string, to: string): ReportSection[] {
+  const payments = state.payments.filter((payment) => inRange(payment.date, from, to))
+  const customerColumns = [column('Заказчик', 'left', 32, 'text'), column('Оплат', 'right', 12, 'number'), column('Сумма', 'right', 16, 'money')]
+  const byCustomer = new Map<string, { count: number; amount: number }>()
+  for (const payment of payments) {
+    const trip = tripById(state, payment.tripId)
+    const name = trip?.customer ?? '—'
+    const bucket = byCustomer.get(name) ?? { count: 0, amount: 0 }
+    bucket.count += 1
+    bucket.amount = round2(bucket.amount + payment.amount)
+    byCustomer.set(name, bucket)
+  }
+  const customerRows = [...byCustomer.entries()]
+    .sort((a, b) => b[1].amount - a[1].amount || a[0].localeCompare(b[0], 'ru'))
+    .map(([name, bucket]) => [name, bucket.count, bucket.amount])
+
+  const methodColumns = [column('Способ', 'left', 16, 'text'), column('Оплат', 'right', 12, 'number'), column('Сумма', 'right', 16, 'money')]
+  const methodRows = payMethods.map((method) => {
+    const matched = payments.filter((payment) => payment.method === method)
+    return [payMethodLabel[method], matched.length, sumAmounts(matched)]
+  })
+
+  return [
+    { title: 'По заказчикам', columns: customerColumns, rows: customerRows, totals: totalRow(customerRows, customerColumns) },
+    { title: 'По способам оплаты', columns: methodColumns, rows: methodRows, totals: totalRow(methodRows, methodColumns) },
+  ]
+}
+
+function debtBreakdown(state: State, from: string, to: string, today: string): ReportSection {
+  const columns = [
+    column('Заказчик', 'left', 32, 'text'),
+    column('Рейсов', 'right', 12, 'number'),
+    column('Ставка', 'right', 14, 'money'),
+    column('Оплачено', 'right', 14, 'money'),
+    column('Долг', 'right', 14, 'money'),
+    column('Просрочено', 'right', 14, 'money'),
+  ]
+  const groups = new Map<string, { count: number; rate: number; paid: number; debt: number; overdue: number }>()
+  for (const trip of periodTrips(state, from, to)) {
+    const economics = tripEconomics(state, trip)
+    if (economics.debt <= 0) continue
+    const bucket = groups.get(trip.customer) ?? { count: 0, rate: 0, paid: 0, debt: 0, overdue: 0 }
+    bucket.count += 1
+    bucket.rate = round2(bucket.rate + trip.rate)
+    bucket.paid = round2(bucket.paid + economics.paid)
+    bucket.debt = round2(bucket.debt + economics.debt)
+    if (isOverdue(trip, economics.debt, today)) bucket.overdue = round2(bucket.overdue + economics.debt)
+    groups.set(trip.customer, bucket)
+  }
+  const rows = [...groups.entries()]
+    .sort((a, b) => b[1].debt - a[1].debt || a[0].localeCompare(b[0], 'ru'))
+    .map(([name, bucket]) => [name, bucket.count, bucket.rate, bucket.paid, bucket.debt, bucket.overdue])
+  return { title: 'Долги по заказчикам', columns, rows, totals: totalRow(rows, columns) }
+}
+
 export function buildReport(state: State, query: ReportQuery, now = new Date()): BuiltReport {
   const today = isoDate(now)
   const sections =
     query.kind === 'summary'
       ? summarySections(state, query.from, query.to)
       : query.kind === 'trips'
-        ? [tripSection(state, query.from, query.to)]
+        ? [tripSection(state, query.from, query.to), ...tripBreakdowns(state, query.from, query.to)]
         : query.kind === 'expenses'
-          ? [expenseSection(state, query.from, query.to)]
+          ? [expenseSection(state, query.from, query.to), ...expenseBreakdowns(state, query.from, query.to)]
           : query.kind === 'repairs'
-            ? [repairSection(state, query.from, query.to)]
+            ? [repairSection(state, query.from, query.to), ...repairBreakdowns(state, query.from, query.to)]
             : query.kind === 'payments'
-              ? [paymentSection(state, query.from, query.to)]
-              : [debtSection(state, query.from, query.to, today)]
+              ? [paymentSection(state, query.from, query.to), ...paymentBreakdowns(state, query.from, query.to)]
+              : [debtSection(state, query.from, query.to, today), debtBreakdown(state, query.from, query.to, today)]
 
   return {
     kind: query.kind,

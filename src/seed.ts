@@ -3,10 +3,10 @@ import type { State } from './types'
 export function createSeed(): State {
   return {
     vehicles: [
-      { id: 'v1', plate: 'А123ВС 116', model: 'Volvo FH', kind: 'Фура' },
-      { id: 'v2', plate: 'К456ОР 716', model: 'MAN TGX', kind: 'Фура' },
-      { id: 'v3', plate: 'М789ТТ 52', model: 'КАМАЗ 5490', kind: 'Фура' },
-      { id: 'v4', plate: 'Н012ЕК 16', model: 'Mercedes Actros', kind: 'Тягач с прицепом' },
+      { id: 'v1', plate: 'А123ВС 116', model: 'Volvo FH', kind: 'Фура', status: 'available' },
+      { id: 'v2', plate: 'К456ОР 716', model: 'MAN TGX', kind: 'Фура', status: 'available' },
+      { id: 'v3', plate: 'М789ТТ 52', model: 'КАМАЗ 5490', kind: 'Фура', status: 'repair' },
+      { id: 'v4', plate: 'Н012ЕК 16', model: 'Mercedes Actros', kind: 'Тягач с прицепом', status: 'downtime' },
     ],
     drivers: [
       { id: 'd1', name: 'Иванов Сергей', phone: '+7 917 410-20-31' },

@@ -263,7 +263,6 @@ h2 { font-size: 18px; }
 .bar-track { height: 8px; background: #f0e6da; border-radius: 999px; overflow: hidden; }
 .bar-fill { height: 100%; background: var(--accent); border-radius: inherit; }
 
-.trip-list .is-cancelled { opacity: 0.72; }
 .trip-no { font-family: var(--mono); font-weight: 500; }
 .route { display: flex; align-items: center; gap: 8px; font-weight: 750; }
 .route-line { flex: 1; height: 2px; min-width: 24px; background: linear-gradient(90deg, transparent, var(--accent), transparent); }
@@ -315,6 +314,7 @@ td small, .fleet-list small { display: block; }
   padding: 12px 0;
   border-top: 1px solid var(--line);
 }
+.fleet-list .badge { margin-left: auto; }
 
 .badge {
   display: inline-flex;
@@ -470,4 +470,70 @@ input[readonly] { background: #f6f1ea; }
   .kpi-grid, .kpi-grid-compact, .econ, .form-grid, .money-row { grid-template-columns: 1fr; }
   .bar-row { grid-template-columns: 1fr auto; }
   .bar-track { display: none; }
+}
+
+.content[data-page='trips'] { max-width: 1320px; }
+.toolbar-select { width: 200px; flex: 0 0 auto; }
+.trip-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 14px;
+  align-items: start;
+}
+.trip-sheet tbody tr { cursor: pointer; }
+.trip-sheet tbody tr[aria-selected="true"] td { background: var(--warn-bg); }
+.trip-sheet .is-cancelled { opacity: 0.72; }
+.trip-sheet .is-overdue { color: var(--bad); font-weight: 700; }
+.trip-expenses {
+  display: grid;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.trip-expenses table { min-width: 0; }
+.trip-expense-form { display: grid; gap: 8px; }
+.trip-side .btn { width: 100%; }
+.trip-side { display: grid; align-content: start; gap: 12px; }
+.trip-facts { margin: 0; display: grid; gap: 8px; }
+.trip-facts dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.trip-facts dd { margin: 0; }
+.trip-sums {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 6px;
+}
+.trip-sums li { display: flex; justify-content: space-between; gap: 8px; }
+.trip-sums span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.road-map {
+  height: 220px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  z-index: 0;
+}
+.road-map .leaflet-pane { z-index: 1; }
+.road-map .leaflet-top,
+.road-map .leaflet-bottom { z-index: 2; }
+.road-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+@media (max-width: 1100px) {
+  .trip-board { grid-template-columns: 1fr; }
 }

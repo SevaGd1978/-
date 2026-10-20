@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { DriverForm, VehicleForm } from '../forms'
 import { useAuth } from '../auth'
+import { vehicleDuty } from '../fleetStatus'
+import { vehicleStatusLabel, vehicleStatuses, vehicleTone } from '../format'
 import { useData } from '../store'
-import type { Driver, Vehicle } from '../types'
-import { ConfirmDialog, Drawer, Empty } from '../ui'
+import type { Driver, Vehicle, VehicleStatus } from '../types'
+import { Badge, ConfirmDialog, Drawer, Empty } from '../ui'
 
 export function FleetPage() {
   const { state, saveVehicle, deleteVehicle, saveDriver, deleteDriver } = useData()
@@ -12,6 +14,12 @@ export function FleetPage() {
   const [vehicleEditor, setVehicleEditor] = useState<Vehicle | 'new' | null>(null)
   const [driverEditor, setDriverEditor] = useState<Driver | 'new' | null>(null)
   const [confirm, setConfirm] = useState<{ text: string; run: () => void } | null>(null)
+  const [status, setStatus] = useState<VehicleStatus | 'all'>('all')
+  const vehicles = useMemo(() => {
+    return state.vehicles
+      .map((vehicle) => ({ vehicle, duty: vehicleDuty(vehicle.status, state.trips, vehicle.id) }))
+      .filter((row) => status === 'all' || row.duty === status)
+  }, [state.vehicles, state.trips, status])
 
   return (
     <div className="split">
@@ -24,18 +32,35 @@ export function FleetPage() {
             </button>
           ) : null}
         </div>
+        <label className="status-line">
+          <span>Статус</span>
+          <select value={status} onChange={(event) => setStatus(event.target.value as VehicleStatus | 'all')}>
+            <option value="all">Все</option>
+            {vehicleStatuses.map((item) => (
+              <option key={item} value={item}>
+                {vehicleStatusLabel[item]}
+              </option>
+            ))}
+          </select>
+        </label>
         {state.vehicles.length === 0 ? (
           <Empty title="Парк пуст" />
+        ) : vehicles.length === 0 ? (
+          <Empty title="Таких машин нет" text="Смените фильтр статуса." />
         ) : (
           <ul className="fleet-list">
-            {state.vehicles.map((vehicle) => (
+            {vehicles.map(({ vehicle, duty }) => (
               <li key={vehicle.id}>
                 <div>
                   <strong>{vehicle.plate}</strong>
                   <small className="muted">
                     {vehicle.kind} · {vehicle.model}
                   </small>
+                  {duty !== vehicle.status ? (
+                    <small className="muted">В парке: {vehicleStatusLabel[vehicle.status]}</small>
+                  ) : null}
                 </div>
+                <Badge tone={vehicleTone(duty)}>{vehicleStatusLabel[duty]}</Badge>
                 {allowed ? (
                   <button type="button" className="text-btn" onClick={() => setVehicleEditor(vehicle)}>
                     Изменить

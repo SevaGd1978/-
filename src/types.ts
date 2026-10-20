@@ -1,6 +1,6 @@
 export type TripStatus = 'planned' | 'loading' | 'in_transit' | 'delivered' | 'closed' | 'cancelled'
 
-export type ExpenseCategory = 'fuel' | 'toll' | 'driver' | 'loading' | 'parking' | 'other'
+export type ExpenseCategory = 'fuel' | 'toll' | 'driver' | 'salary' | 'loading' | 'parking' | 'other'
 
 export type RepairKind = 'maintenance' | 'repair' | 'tires' | 'parts' | 'body'
 
@@ -8,11 +8,15 @@ export type RepairStatus = 'queued' | 'in_progress' | 'done'
 
 export type PayMethod = 'bank' | 'cash' | 'card'
 
+export type ParkStatus = 'available' | 'repair' | 'downtime'
+export type VehicleStatus = ParkStatus | 'on_trip' | 'loading'
+
 export interface Vehicle {
   id: string
   plate: string
   model: string
   kind: string
+  status: ParkStatus
 }
 
 export interface Driver {
