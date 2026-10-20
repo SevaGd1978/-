@@ -29,6 +29,15 @@ export function debtOf(trip: Trip, paid: number) {
   return Math.max(0, round2(trip.rate - paid))
 }
 
+export type PayMark = 'paid' | 'partial' | 'unpaid' | 'cancelled'
+
+export function payMark(status: Trip['status'], rate: number, paid: number): PayMark {
+  if (status === 'cancelled') return 'cancelled'
+  if (rate > 0 && paid + 0.001 >= rate) return 'paid'
+  if (paid > 0) return 'partial'
+  return 'unpaid'
+}
+
 export function marginOf(trip: Trip, expenses: number) {
   if (trip.status === 'cancelled') return round2(-expenses)
   return round2(trip.rate - expenses)

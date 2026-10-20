@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { debtOf, expenseWithVat, isOverdue, parseMoney, sumAmounts, sumExpenses } from '../calc'
+import { debtOf, expenseWithVat, isOverdue, parseMoney, payMark, sumAmounts, sumExpenses } from '../calc'
 import {
   dateRu,
   expenseCategories,
@@ -121,6 +121,9 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
               <table className="trip-sheet">
                 <thead>
                   <tr>
+                    <th className="pay-col" title="Красный — не оплачен, жёлтый — частично, зелёный — оплачен">
+                      <span className="sr">Оплата</span>
+                    </th>
                     <th>Дата</th>
                     <th>Номер</th>
                     <th>Маршрут</th>
@@ -145,6 +148,9 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
                         onClick={() => setSelectedId(row.trip.id)}
                         onDoubleClick={() => onOpen(row.trip.id)}
                       >
+                        <td className="pay-col">
+                          <PayDot status={row.trip.status} rate={row.trip.rate} paid={row.paid} />
+                        </td>
                         <td>{dateRu(row.trip.date)}</td>
                         <td>
                           <button
@@ -467,6 +473,19 @@ function TripExpenses({ trip, total, count }: { trip: Trip; total: number; count
       ) : null}
     </div>
   )
+}
+
+const payDotLabel = {
+  paid: 'Оплачен',
+  partial: 'Оплачен частично',
+  unpaid: 'Не оплачен',
+  cancelled: 'Отменён',
+} as const
+
+function PayDot({ status, rate, paid }: { status: TripStatus; rate: number; paid: number }) {
+  const mark = payMark(status, rate, paid)
+  const label = payDotLabel[mark]
+  return <span className={`pay-dot pay-dot-${mark}`} title={label} aria-label={label} />
 }
 
 function payPercent(rate: number, paid: number) {

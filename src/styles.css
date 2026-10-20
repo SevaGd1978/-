@@ -499,11 +499,36 @@ input[readonly] { background: #f6f1ea; }
   .trip-sheet { font-size: 13px; }
   .trip-sheet th,
   .trip-sheet td { padding: 2px 2px; }
+  .trip-sheet .pay-col { padding-left: 1px; padding-right: 0; }
 }
 .trip-sheet th { font-size: 12px; letter-spacing: 0.03em; font-weight: 700; }
 .trip-sheet .num,
 .trip-sheet .trip-no { font-family: "Times New Roman", Times, serif; }
 .trip-sheet .badge { padding: 0 6px; font-size: 14px; font-weight: 700; line-height: 1.3; }
+.pay-col { width: 22px; text-align: center; }
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.pay-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50% !important;
+  vertical-align: middle;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+.pay-dot-paid { background: #2f9e44; }
+.pay-dot-partial { background: #f0b429; }
+.pay-dot-unpaid { background: #d3272b; }
+.pay-dot-cancelled { background: #a3a3a3; }
 .trip-sheet tbody tr { cursor: pointer; }
 .trip-sheet tbody tr[aria-selected="true"] td { background: var(--warn-bg); }
 .trip-sheet .is-cancelled { opacity: 0.72; }

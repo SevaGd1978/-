@@ -8,6 +8,7 @@ import {
   marginOf,
   nextTripNumber,
   parseMoney,
+  payMark,
   repairCost,
   round2,
   sumExpenses,
@@ -38,6 +39,11 @@ assert.equal(round2(10.126), 10.13)
 assert.equal(debtOf(trip({ rate: 86000 }), 20000), 66000)
 assert.equal(debtOf(trip({ status: 'cancelled', rate: 39000 }), 0), 0)
 assert.equal(debtOf(trip({ rate: 1000 }), 1500), 0)
+assert.equal(payMark('delivered', 64000, 64000), 'paid')
+assert.equal(payMark('delivered', 86000, 20000), 'partial')
+assert.equal(payMark('planned', 54000, 0), 'unpaid')
+assert.equal(payMark('cancelled', 39000, 0), 'cancelled')
+assert.equal(payMark('delivered', 1000, 1500), 'paid')
 assert.equal(marginOf(trip({ rate: 86000 }), 26900), 59100)
 assert.equal(marginOf(trip({ status: 'cancelled', rate: 39000 }), 3100), -3100)
 assert.equal(repairCost({ partsCost: 42000, laborCost: 6000 }), 48000)
