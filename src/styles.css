@@ -275,7 +275,7 @@ h2 { font-size: 18px; }
 .note { padding: 10px 12px; background: #f7f1e8; border-radius: 0; }
 .banner { padding: 10px 12px; border-radius: 0; background: var(--warn-bg); }
 .banner-bad { background: var(--bad-bg); color: var(--bad); }
-.status-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.status-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0; }
 .status-line span { color: var(--muted); font-size: 13px; font-weight: 700; }
 
 .econ {
@@ -302,19 +302,23 @@ th {
   color: var(--muted);
 }
 td.num, th.num { text-align: right; }
-td small, .fleet-list small { display: block; }
+td small { display: block; }
 .row-actions { display: flex; gap: 8px; justify-content: flex-end; white-space: nowrap; }
 
-.fleet-list { list-style: none; margin: 0; padding: 0; }
-.fleet-list li {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-  padding: 12px 0;
-  border-top: 1px solid var(--line);
+.content[data-page='fleet'] .stack > .card { min-width: 0; }
+.fleet-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.fleet-tools select { width: 180px; }
+.fleet-sheet { font-size: 14px; line-height: 1.15; width: 100%; }
+.fleet-sheet th,
+.fleet-sheet td {
+  padding: 2px 8px;
+  vertical-align: middle;
+  white-space: nowrap;
 }
-.fleet-list .badge { margin-left: auto; }
+.fleet-sheet th { font-size: 11px; letter-spacing: 0.03em; }
+.fleet-sheet .badge { padding: 0 4px; font-size: 12px; font-weight: 700; line-height: 1.3; margin-left: 0; }
+.fleet-park { margin-left: 6px; color: var(--muted); font-size: 12px; }
+.fleet-action { position: relative; text-align: right; }
 
 .badge {
   display: inline-flex;
