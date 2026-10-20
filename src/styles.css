@@ -509,29 +509,33 @@ input[readonly] { background: #f6f1ea; }
   align-items: start;
 }
 .trip-board > .card { min-width: 0; }
-.trip-sheet { font-size: 15px; line-height: 1.15; width: 100%; }
+.trip-board > .card:first-child { padding: 8px 6px 4px; }
+.trip-sheet { font-size: 13px; line-height: 1.15; width: 100%; }
 .trip-sheet th,
 .trip-sheet td {
-  padding: 2px 5px;
+  padding: 2px 4px;
   vertical-align: middle;
   white-space: nowrap;
 }
-@media (max-width: 1500px) {
-  .trip-sheet { font-size: 14px; }
+@media (max-width: 1600px) {
+  .trip-sheet { font-size: 12px; }
   .trip-sheet th,
-  .trip-sheet td { padding: 2px 4px; }
+  .trip-sheet td { padding: 1px 2px; }
 }
-@media (max-width: 1320px) {
+@media (max-width: 1360px) {
   .shell:has(.content[data-page='trips']) .main { padding-left: 8px; padding-right: 8px; }
-  .trip-sheet { font-size: 13px; }
+  .trip-sheet { font-size: 11px; }
   .trip-sheet th,
-  .trip-sheet td { padding: 2px 2px; }
+  .trip-sheet td { padding: 1px 2px; }
   .trip-sheet .pay-col { padding-left: 1px; padding-right: 0; }
 }
-.trip-sheet th { font-size: 12px; letter-spacing: 0.03em; font-weight: 700; }
+.trip-sheet th { font-size: 11px; letter-spacing: 0; font-weight: 700; }
 .trip-sheet .num,
 .trip-sheet .trip-no { font-family: "Times New Roman", Times, serif; }
-.trip-sheet .badge { padding: 0 6px; font-size: 14px; font-weight: 700; line-height: 1.3; }
+.trip-sheet .badge { padding: 0 4px; font-size: 12px; font-weight: 700; line-height: 1.25; }
+@media (max-width: 1360px) {
+  .trip-sheet .badge { font-size: 11px; padding: 0 3px; }
+}
 .pay-col { width: 22px; text-align: center; }
 .sr {
   position: absolute;

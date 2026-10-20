@@ -127,6 +127,8 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
                     <th>Дата</th>
                     <th>Номер</th>
                     <th>Маршрут</th>
+                    <th>Машина</th>
+                    <th>Водитель</th>
                     <th className="num">Км</th>
                     <th>Состояние</th>
                     <th>Заказчик</th>
@@ -167,6 +169,10 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
                         <td>
                           {row.trip.from} — {row.trip.to}
                         </td>
+                        <td title={row.vehicle ? `${row.vehicle.plate} · ${row.vehicle.model}` : undefined}>
+                          {row.vehicle?.plate || '—'}
+                        </td>
+                        <td>{row.driver?.name || '—'}</td>
                         <td className="num">{roadKm(routes[legKey(row.trip.from, row.trip.to)], ready)}</td>
                         <td>
                           <Badge tone={tripTone(row.trip.status)}>{tripStatusLabel[row.trip.status]}</Badge>
