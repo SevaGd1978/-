@@ -16,7 +16,7 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
   const [creating, setCreating] = useState(false)
   const today = todayIso()
 
-  const cards = useMemo(() => {
+  const rows = useMemo(() => {
     const needle = query.trim().toLowerCase()
     return [...state.trips]
       .sort((a, b) => b.date.localeCompare(a.date) || b.number.localeCompare(a.number))
@@ -81,53 +81,61 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
         ))}
       </div>
       <p className="muted">
-        Показано {cards.length} из {state.trips.length}
+        Показано {rows.length} из {state.trips.length}
       </p>
-      {cards.length === 0 ? (
+      {rows.length === 0 ? (
         <Empty title="Рейсов не найдено" text="Измените фильтр или создайте новый рейс." />
       ) : (
-        <div className="trip-grid">
-          {cards.map((row) => (
-            <article key={row.trip.id} className={row.trip.status === 'cancelled' ? 'trip-card is-cancelled' : 'trip-card'}>
-              <button type="button" className="stretch" onClick={() => onOpen(row.trip.id)} aria-label={`Открыть рейс ${row.trip.number}`}>
-                <div className="card-top">
-                  <span className="trip-no">{row.trip.number}</span>
-                  <Badge tone={tripTone(row.trip.status)}>{tripStatusLabel[row.trip.status]}</Badge>
-                </div>
-                <div className="muted">{dateRu(row.trip.date)}</div>
-                <div className="route">
-                  <span>{row.trip.from}</span>
-                  <span className="route-line" />
-                  <span>{row.trip.to}</span>
-                </div>
-                <div className="muted">
-                  {row.vehicle ? `${row.vehicle.model} · ${row.vehicle.plate}` : 'Машина не указана'}
-                  {' · '}
-                  {row.driver?.name ?? 'Водитель не указан'}
-                </div>
-                <div>
-                  {row.trip.cargo}
-                  {row.trip.weightTons ? ` · ${tons(row.trip.weightTons)}` : ''} · {row.trip.customer}
-                </div>
-                <div className="money-row">
-                  <div>
-                    <span>Ставка</span>
-                    <strong className="num">{money(row.trip.rate)}</strong>
-                  </div>
-                  <div>
-                    <span>Расходы</span>
-                    <strong className="num">{money(row.expenses)}</strong>
-                  </div>
-                  <div>
-                    <span>Долг</span>
-                    <strong className="num">{money(row.debt)}</strong>
-                  </div>
-                </div>
-                {row.overdue ? <div className="overdue-line">Оплата просрочена с {dateRu(row.trip.payDue)}</div> : null}
-              </button>
-            </article>
-          ))}
-        </div>
+        <section className="card">
+          <div className="table-wrap">
+            <table className="trip-list">
+              <thead>
+                <tr>
+                  <th>Дата</th>
+                  <th>Рейс</th>
+                  <th>Маршрут</th>
+                  <th>Статус</th>
+                  <th>Машина</th>
+                  <th className="num">Ставка</th>
+                  <th className="num">Расходы</th>
+                  <th className="num">Долг</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.trip.id} className={row.trip.status === 'cancelled' ? 'is-cancelled' : undefined}>
+                    <td>{dateRu(row.trip.date)}</td>
+                    <td>
+                      <button type="button" className="linkish trip-no" onClick={() => onOpen(row.trip.id)}>
+                        {row.trip.number}
+                      </button>
+                    </td>
+                    <td>
+                      {row.trip.from} → {row.trip.to}
+                      <small className="muted">
+                        {row.trip.cargo}
+                        {row.trip.weightTons ? ` · ${tons(row.trip.weightTons)}` : ''} · {row.trip.customer}
+                      </small>
+                    </td>
+                    <td>
+                      <Badge tone={tripTone(row.trip.status)}>{tripStatusLabel[row.trip.status]}</Badge>
+                    </td>
+                    <td>
+                      {row.vehicle ? `${row.vehicle.model} · ${row.vehicle.plate}` : 'Машина не указана'}
+                      <small className="muted">{row.driver?.name ?? 'Водитель не указан'}</small>
+                    </td>
+                    <td className="num">{money(row.trip.rate)}</td>
+                    <td className="num">{money(row.expenses)}</td>
+                    <td className="num">
+                      {money(row.debt)}
+                      {row.overdue ? <small className="overdue-line">с {dateRu(row.trip.payDue)}</small> : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
       {creating ? (
         <Drawer title="Новый рейс" onClose={() => setCreating(false)}>
