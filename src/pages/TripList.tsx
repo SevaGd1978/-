@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { debtOf, isOverdue, parseMoney, sumAmounts } from '../calc'
+import { debtOf, expenseWithVat, isOverdue, parseMoney, sumAmounts, sumExpenses } from '../calc'
 import {
   dateRu,
   expenseCategories,
   expenseCategoryLabel,
+  expenseEntryHint,
   money,
   todayIso,
   tripStatusLabel,
@@ -17,7 +18,7 @@ import { federalLabel, legKey, roadDetail, roadKm } from '../roads'
 import { uid, useData } from '../store'
 import { useRoadRoutes } from '../useRoutes'
 import type { ExpenseCategory, Trip, TripExpense, TripStatus } from '../types'
-import { Badge, ConfirmDialog, Drawer, Empty } from '../ui'
+import { Badge, ConfirmDialog, Drawer, Empty, ExpenseAmount } from '../ui'
 
 export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
   const { state, saveTrip } = useData()
@@ -42,7 +43,7 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
         const vehicle = state.vehicles.find((item) => item.id === trip.vehicleId)
         const driver = state.drivers.find((item) => item.id === trip.driverId)
         const tripExpenses = state.expenses.filter((expense) => expense.tripId === trip.id)
-        const expenses = sumAmounts(tripExpenses)
+        const expenses = sumExpenses(tripExpenses)
         const paid = sumAmounts(state.payments.filter((payment) => payment.tripId === trip.id))
         const debt = debtOf(trip, paid)
         return {
@@ -375,7 +376,9 @@ function TripExpenses({ trip, total, count }: { trip: Trip; total: number; count
         <h3>Расходы по рейсу</h3>
         <span className="muted">{count === 0 ? 'Пока нет' : `${count} на ${money(total)}`}</span>
       </div>
-      <p className="road-note">Платон пишется в расходы только за федеральные дороги из перечня Правительства: их километры × тариф. С 1 марта 2026 года это 5,19 ₽/км.</p>
+      <p className="road-note">
+        Платон пишется в расходы только за федеральные дороги из перечня Правительства: их километры × тариф. С 1 марта 2026 года это 5,19 ₽/км. Ко всем расходам, кроме топлива, добавляется НДС 22%.
+      </p>
       {expenses.length > 0 ? (
         <div className="table-wrap">
           <table>
@@ -393,7 +396,9 @@ function TripExpenses({ trip, total, count }: { trip: Trip; total: number; count
                 <tr key={expense.id}>
                   <td>{dateRu(expense.date)}</td>
                   <td>{expenseCategoryLabel[expense.category]}</td>
-                  <td className="num">{money(expense.amount)}</td>
+                  <td className="num">
+                    <ExpenseAmount category={expense.category} amount={expense.amount} />
+                  </td>
                   <td>{expense.comment || '—'}</td>
                   <td className="row-actions">
                     {canEdit ? (
@@ -427,7 +432,7 @@ function TripExpenses({ trip, total, count }: { trip: Trip; total: number; count
             inputMode="decimal"
             value={amount}
             aria-label="Сумма расхода"
-            placeholder="Сумма"
+            placeholder={category === 'fuel' ? 'Сумма' : 'Сумма без НДС'}
             onChange={(event) => setAmount(event.target.value)}
           />
           <input
@@ -439,6 +444,7 @@ function TripExpenses({ trip, total, count }: { trip: Trip; total: number; count
           <button type="submit" className="btn small primary">
             Добавить расход
           </button>
+          <p className="hint">{expenseEntryHint(category, parseMoney(amount))}</p>
           {error ? (
             <p className="form-error" role="alert">
               {error}
@@ -450,7 +456,7 @@ function TripExpenses({ trip, total, count }: { trip: Trip; total: number; count
       )}
       {pending ? (
         <ConfirmDialog
-          text={`Удалить ${expenseCategoryLabel[pending.category].toLowerCase()} ${money(pending.amount)}?`}
+          text={`Удалить ${expenseCategoryLabel[pending.category].toLowerCase()} ${money(expenseWithVat(pending.category, pending.amount))}?`}
           confirmLabel="Удалить"
           onNo={() => setPending(null)}
           onYes={() => {

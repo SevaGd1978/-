@@ -4,6 +4,7 @@ import {
   dateRu,
   expenseCategories,
   expenseCategoryLabel,
+  expenseEntryHint,
   money,
   payMethodLabel,
   payMethods,
@@ -248,9 +249,10 @@ export function ExpenseForm({
           ))}
         </select>
       </Field>
-      <Field label="Сумма, ₽">
+      <Field label={category === 'fuel' ? 'Сумма, ₽' : 'Сумма без НДС, ₽'}>
         <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} autoFocus={Boolean(lockedTrip)} />
       </Field>
+      <p className="hint wide">{expenseEntryHint(category, parseMoney(amount))}</p>
       <Field label="Комментарий" wide>
         <input value={comment} onChange={(event) => setComment(event.target.value)} placeholder="АЗС, литры, документ" />
       </Field>

@@ -1,4 +1,4 @@
-import { debtOf, inRange, isOverdue, marginOf, repairCost, round2, sumAmounts } from '../calc'
+import { debtOf, expenseVat, expenseWithVat, inRange, isOverdue, marginOf, repairCost, round2, sumAmounts, sumExpenses } from '../calc'
 import {
   dateRu,
   expenseCategories,
@@ -178,11 +178,11 @@ function driverName(state: State, id: string) {
 
 function tripEconomics(state: State, trip: Trip) {
   const expenses = state.expenses.filter((expense) => expense.tripId === trip.id)
-  const spend = sumAmounts(expenses)
+  const spend = sumExpenses(expenses)
   const paid = sumAmounts(state.payments.filter((payment) => payment.tripId === trip.id))
   return {
     expenses: spend,
-    salary: sumAmounts(expenses.filter((expense) => expense.category === 'salary')),
+    salary: sumExpenses(expenses.filter((expense) => expense.category === 'salary')),
     paid,
     debt: debtOf(trip, paid),
     margin: marginOf(trip, spend),
@@ -291,14 +291,14 @@ function summarySections(state: State, from: string, to: string): ReportSection[
   const repairs = state.repairs.filter((job) => inRange(job.date, from, to))
   const trips = state.trips.filter((trip) => inRange(trip.date, from, to))
   const received = sumAmounts(payments)
-  const tripSpend = sumAmounts(expenses)
+  const tripSpend = sumExpenses(expenses)
   const workshop = sumAmounts(repairs.map((job) => ({ amount: repairCost(job) })))
   const debt = round2(trips.reduce((sum, trip) => sum + tripEconomics(state, trip).debt, 0))
 
   const byCategory = expenseCategories
     .map((category) => ({
       label: expenseCategoryLabel[category],
-      amount: sumAmounts(expenses.filter((expense) => expense.category === category)),
+      amount: sumExpenses(expenses.filter((expense) => expense.category === category)),
     }))
     .filter((row) => row.amount > 0)
   const categoryRows = byCategory.map((row) => [row.label, row.amount] as (string | number | null)[])
@@ -412,7 +412,9 @@ function expenseSection(state: State, from: string, to: string): ReportSection {
     column('Заказчик', 'left', 28, 'text'),
     column('Статья', 'left', 24, 'text'),
     column('Комментарий', 'left', 32, 'text'),
-    column('Сумма', 'right', 14, 'money'),
+    column('Без НДС', 'right', 14, 'money'),
+    column('НДС 22%', 'right', 14, 'money'),
+    column('С НДС', 'right', 14, 'money'),
   ]
   const rows = state.expenses
     .filter((expense) => inRange(expense.date, from, to))
@@ -427,6 +429,8 @@ function expenseSection(state: State, from: string, to: string): ReportSection {
         expenseCategoryLabel[expense.category],
         expense.comment || '—',
         expense.amount,
+        expenseVat(expense.category, expense.amount),
+        expenseWithVat(expense.category, expense.amount),
       ]
     })
   return { title: 'Расходы', columns, rows, totals: totalRow(rows, columns) }
@@ -523,7 +527,7 @@ function debtSection(state: State, from: string, to: string, today: string): Rep
 }
 
 function expenseAmount(rows: { category: string; amount: number }[], category: string) {
-  return sumAmounts(rows.filter((row) => row.category === category))
+  return sumExpenses(rows.filter((row) => row.category === category))
 }
 
 function expenseBreakdowns(state: State, from: string, to: string): ReportSection[] {
@@ -535,7 +539,7 @@ function expenseBreakdowns(state: State, from: string, to: string): ReportSectio
   ]
   const categoryRows = expenseCategories.map((category) => {
     const matched = expenses.filter((expense) => expense.category === category)
-    return [expenseCategoryLabel[category], matched.length, sumAmounts(matched)]
+    return [expenseCategoryLabel[category], matched.length, sumExpenses(matched)]
   })
 
   const byTrip = new Map<string, typeof expenses>()
@@ -564,7 +568,7 @@ function expenseBreakdowns(state: State, from: string, to: string): ReportSectio
       const platon = expenseAmount(rows, 'platon')
       const perDiem = expenseAmount(rows, 'driver')
       const salary = expenseAmount(rows, 'salary')
-      const total = sumAmounts(rows)
+      const total = sumExpenses(rows)
       const rest = round2(total - fuel - toll - platon - perDiem - salary)
       return [
         trip?.number ?? '—',
@@ -586,9 +590,10 @@ function expenseBreakdowns(state: State, from: string, to: string): ReportSectio
     const trip = tripById(state, expense.tripId)
     const name = trip ? driverName(state, trip.driverId) : '—'
     const bucket = byDriver.get(name) ?? { perDiem: 0, salary: 0, other: 0 }
-    if (expense.category === 'driver') bucket.perDiem = round2(bucket.perDiem + expense.amount)
-    else if (expense.category === 'salary') bucket.salary = round2(bucket.salary + expense.amount)
-    else bucket.other = round2(bucket.other + expense.amount)
+    const gross = expenseWithVat(expense.category, expense.amount)
+    if (expense.category === 'driver') bucket.perDiem = round2(bucket.perDiem + gross)
+    else if (expense.category === 'salary') bucket.salary = round2(bucket.salary + gross)
+    else bucket.other = round2(bucket.other + gross)
     byDriver.set(name, bucket)
   }
   const driverColumns = [
@@ -629,8 +634,9 @@ function laborSection(state: State, from: string, to: string): ReportSection {
     const trip = tripById(state, expense.tripId)
     const name = trip ? driverName(state, trip.driverId) : '—'
     const bucket = groups.get(name) ?? { perDiem: 0, salary: 0 }
-    if (expense.category === 'driver') bucket.perDiem = round2(bucket.perDiem + expense.amount)
-    else bucket.salary = round2(bucket.salary + expense.amount)
+    const gross = expenseWithVat(expense.category, expense.amount)
+    if (expense.category === 'driver') bucket.perDiem = round2(bucket.perDiem + gross)
+    else bucket.salary = round2(bucket.salary + gross)
     groups.set(name, bucket)
   }
   const rows = [...groups.entries()]

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { debtOf, isOverdue, marginOf, sumAmounts } from '../calc'
+import { debtOf, expenseWithVat, isOverdue, marginOf, sumAmounts, sumExpenses } from '../calc'
 import {
   dateRu,
   expenseCategoryLabel,
@@ -18,7 +18,7 @@ import { federalLabel, legKey, roadDetail } from '../roads'
 import { useData } from '../store'
 import { useRoadRoutes } from '../useRoutes'
 import type { Payment, Trip, TripExpense, TripStatus } from '../types'
-import { Badge, ConfirmDialog, Drawer, Empty } from '../ui'
+import { Badge, ConfirmDialog, Drawer, Empty, ExpenseAmount } from '../ui'
 
 export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const { state, saveTrip, deleteTrip, saveExpense, deleteExpense, savePayment, deletePayment } = useData()
@@ -51,7 +51,7 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const payments = state.payments
     .filter((payment) => payment.tripId === trip.id)
     .sort((a, b) => b.date.localeCompare(a.date))
-  const expenseTotal = sumAmounts(expenses)
+  const expenseTotal = sumExpenses(expenses)
   const paid = sumAmounts(payments)
   const debt = debtOf(trip, paid)
   const margin = marginOf(trip, expenseTotal)
@@ -158,7 +158,7 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
         </article>
       </section>
       <p className="muted">
-        Маржа по ставке {money(margin)} — ставка минус расходы этого рейса. Срок оплаты: {trip.payDue ? dateRu(trip.payDue) : 'не задан'}.
+        Маржа по ставке {money(margin)} — ставка минус расходы этого рейса. Кроме топлива, расходы с НДС 22%. Срок оплаты: {trip.payDue ? dateRu(trip.payDue) : 'не задан'}.
       </p>
 
       <div className="split">
@@ -192,7 +192,9 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
                         {expenseCategoryLabel[expense.category]}
                         {expense.comment ? <small className="muted">{expense.comment}</small> : null}
                       </td>
-                      <td className="num">{money(expense.amount)}</td>
+                      <td className="num">
+                        <ExpenseAmount category={expense.category} amount={expense.amount} />
+                      </td>
                       <td className="row-actions">
                         {editExpense ? (
                           <>
@@ -204,7 +206,7 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
                               className="text-btn danger-text"
                               onClick={() =>
                                 setConfirm({
-                                  text: `Удалить расход ${money(expense.amount)}?`,
+                                  text: `Удалить расход ${money(expenseWithVat(expense.category, expense.amount))}?`,
                                   confirmLabel: 'Удалить',
                                   run: () => void deleteExpense(expense.id),
                                 })
@@ -326,7 +328,7 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
                 : () => {
                     const current = expenseEditor
                     setConfirm({
-                      text: `Удалить расход ${money(current.amount)}?`,
+                      text: `Удалить расход ${money(expenseWithVat(current.category, current.amount))}?`,
                       confirmLabel: 'Удалить',
                       run: () => {
                         void deleteExpense(current.id).then((ok) => {

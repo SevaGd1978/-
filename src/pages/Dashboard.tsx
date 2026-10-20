@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { debtOf, inPeriod, isOverdue, repairCost, sumAmounts } from '../calc'
+import { debtOf, inPeriod, isOverdue, repairCost, sumAmounts, sumExpenses, VAT_PERCENT } from '../calc'
 import {
   currentPeriod,
   dateRu,
@@ -32,7 +32,7 @@ export function Dashboard({ onOpenTrip }: { onOpenTrip: (id: string) => void }) 
   }, [state])
 
   const rows = state.trips.map((trip) => {
-    const expenses = sumAmounts(state.expenses.filter((expense) => expense.tripId === trip.id))
+    const expenses = sumExpenses(state.expenses.filter((expense) => expense.tripId === trip.id))
     const paid = sumAmounts(state.payments.filter((payment) => payment.tripId === trip.id))
     const debt = debtOf(trip, paid)
     return { trip, expenses, paid, debt, overdue: isOverdue(trip, debt, today) }
@@ -41,7 +41,7 @@ export function Dashboard({ onOpenTrip }: { onOpenTrip: (id: string) => void }) 
   const debtNow = sumAmounts(rows.map((row) => ({ amount: row.debt })))
   const debtTrips = rows.filter((row) => row.debt > 0).length
   const onRoad = state.trips.filter((trip) => trip.status === 'in_transit' || trip.status === 'loading').length
-  const tripSpend = sumAmounts(state.expenses.filter((expense) => inPeriod(expense.date, period)))
+  const tripSpend = sumExpenses(state.expenses.filter((expense) => inPeriod(expense.date, period)))
   const workshop = sumAmounts(
     state.repairs.filter((job) => inPeriod(job.date, period)).map((job) => ({ amount: repairCost(job) })),
   )
@@ -62,7 +62,7 @@ export function Dashboard({ onOpenTrip }: { onOpenTrip: (id: string) => void }) 
   const byCategory = expenseCategories
     .map((category) => ({
       category,
-      amount: sumAmounts(
+      amount: sumExpenses(
         state.expenses.filter((expense) => expense.category === category && inPeriod(expense.date, period)),
       ),
     }))
@@ -180,6 +180,7 @@ export function Dashboard({ onOpenTrip }: { onOpenTrip: (id: string) => void }) 
           <section className="card">
             <div className="section-head">
               <h2>Расходы рейсов</h2>
+              <span className="muted">кроме топлива, с НДС {VAT_PERCENT}%</span>
             </div>
             {byCategory.length === 0 ? (
               <Empty title="За период расходов нет" />

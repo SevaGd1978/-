@@ -1,5 +1,17 @@
 import assert from 'node:assert/strict'
-import { debtOf, inPeriod, isOverdue, marginOf, nextTripNumber, parseMoney, repairCost, round2 } from './calc.ts'
+import {
+  debtOf,
+  expenseVat,
+  expenseWithVat,
+  inPeriod,
+  isOverdue,
+  marginOf,
+  nextTripNumber,
+  parseMoney,
+  repairCost,
+  round2,
+  sumExpenses,
+} from './calc.ts'
 import type { Trip } from './types.ts'
 
 function trip(partial: Partial<Trip> = {}): Trip {
@@ -41,5 +53,20 @@ assert.equal(parseMoney('1 200,50'), 1200.5)
 assert.equal(parseMoney('0'), 0)
 assert.equal(parseMoney('-5'), null)
 assert.equal(parseMoney(''), null)
+assert.equal(expenseVat('fuel', 18500), 0)
+assert.equal(expenseWithVat('fuel', 18500), 18500)
+assert.equal(expenseVat('toll', 2400), 528)
+assert.equal(expenseWithVat('toll', 2400), 2928)
+assert.equal(expenseWithVat('salary', 100), 122)
+assert.equal(expenseVat('platon', 1129.86), 248.57)
+assert.equal(expenseWithVat('platon', 1129.86), 1378.43)
+assert.equal(
+  sumExpenses([
+    { category: 'fuel', amount: 18500 },
+    { category: 'toll', amount: 2400 },
+    { category: 'driver', amount: 6000 },
+  ]),
+  28748,
+)
 
 console.log('calc ok')

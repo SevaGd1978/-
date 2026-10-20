@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { inPeriod, sumAmounts } from '../calc'
+import { expenseWithVat, inPeriod, sumExpenses, VAT_PERCENT } from '../calc'
 import {
   currentPeriod,
   dateRu,
@@ -12,7 +12,7 @@ import { ExpenseForm } from '../forms'
 import { useAuth } from '../auth'
 import { useData } from '../store'
 import type { ExpenseCategory, TripExpense } from '../types'
-import { ConfirmDialog, Drawer, Empty } from '../ui'
+import { ConfirmDialog, Drawer, Empty, ExpenseAmount } from '../ui'
 
 export function ExpensesPage({ onOpenTrip }: { onOpenTrip: (id: string) => void }) {
   const { state, saveExpense, deleteExpense } = useData()
@@ -72,7 +72,9 @@ export function ExpensesPage({ onOpenTrip }: { onOpenTrip: (id: string) => void 
         ) : null}
       </div>
       {allowed ? null : <p className="hint">Просмотр. Менять расходы может тот, у кого есть это право.</p>}
-      <p className="muted">Итого по фильтру: {money(sumAmounts(rows))}</p>
+      <p className="muted">
+        Итого по фильтру: {money(sumExpenses(rows))}. Кроме топлива, к сумме добавлен НДС {VAT_PERCENT}%.
+      </p>
       <section className="card">
         {rows.length === 0 ? (
           <Empty title="Расходов нет" text="Добавьте топливо, дороги, суточные или погрузку." />
@@ -106,7 +108,9 @@ export function ExpensesPage({ onOpenTrip }: { onOpenTrip: (id: string) => void 
                       </td>
                       <td>{expenseCategoryLabel[expense.category]}</td>
                       <td>{expense.comment || '—'}</td>
-                      <td className="num">{money(expense.amount)}</td>
+                      <td className="num">
+                        <ExpenseAmount category={expense.category} amount={expense.amount} />
+                      </td>
                       <td className="row-actions">
                         {allowed ? (
                           <>
@@ -118,7 +122,7 @@ export function ExpensesPage({ onOpenTrip }: { onOpenTrip: (id: string) => void 
                               className="text-btn danger-text"
                               onClick={() =>
                                 setConfirm({
-                                  text: `Удалить расход ${money(expense.amount)}?`,
+                                  text: `Удалить расход ${money(expenseWithVat(expense.category, expense.amount))}?`,
                                   run: () => void deleteExpense(expense.id),
                                 })
                               }

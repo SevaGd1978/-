@@ -1,4 +1,16 @@
 import { useEffect, type ReactNode } from 'react'
+import { expenseVat, expenseWithVat } from './calc'
+import { money } from './format'
+
+export function ExpenseAmount({ category, amount }: { category: string; amount: number }) {
+  const vat = expenseVat(category, amount)
+  return (
+    <>
+      {money(expenseWithVat(category, amount))}
+      {vat > 0 ? <small className="muted">НДС {money(vat)}</small> : null}
+    </>
+  )
+}
 
 export function Badge({ tone, children }: { tone: string; children: ReactNode }) {
   return <span className={`badge tone-${tone}`}>{children}</span>

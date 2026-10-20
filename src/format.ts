@@ -1,3 +1,4 @@
+import { expenseWithVat, VAT_PERCENT } from './calc'
 import type { ExpenseCategory, ParkStatus, PayMethod, RepairKind, RepairStatus, TripStatus, VehicleStatus } from './types'
 
 export const tripStatusLabel: Record<TripStatus, string> = {
@@ -85,6 +86,12 @@ export function money(value: number) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(value)
+}
+
+export function expenseEntryHint(category: string, amount: number | null) {
+  if (category === 'fuel') return 'Топливо учитывается без НДС.'
+  if (amount == null || amount <= 0) return `К сумме добавится НДС ${VAT_PERCENT}%.`
+  return `К учёту ${money(expenseWithVat(category, amount))}, в том числе НДС ${VAT_PERCENT}%.`
 }
 
 export function formatPlain(value: number) {

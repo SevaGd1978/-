@@ -27,15 +27,15 @@ function rowNumber(rows: (string | number | null)[][], marker: string, index: nu
 const trips = section('trips')
 assert.equal(trips.section.rows.length, 6)
 assert.equal(rowNumber(trips.section.rows, 'Р-1034', 9), 86000)
-assert.equal(rowNumber(trips.section.rows, 'Р-1034', 10), 26900)
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 10), 28748)
 assert.equal(rowNumber(trips.section.rows, 'Р-1034', 11), 20000)
 assert.equal(rowNumber(trips.section.rows, 'Р-1034', 12), 66000)
-assert.equal(rowNumber(trips.section.rows, 'Р-1034', 13), 59100)
-assert.deepEqual(trips.section.totals?.slice(9), [403000, 95400, 144000, 220000, 268600])
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 13), 57252)
+assert.deepEqual(trips.section.totals?.slice(9), [403000, 101736, 144000, 220000, 262264])
 
 const expenses = section('expenses')
 assert.equal(expenses.section.rows.length, 12)
-assert.equal(expenses.section.totals?.at(-1), 95400)
+assert.equal(expenses.section.totals?.at(-1), 101736)
 
 const repairs = section('repairs')
 assert.equal(repairs.section.rows.length, 3)
@@ -55,7 +55,7 @@ const summary = buildReport(state, { kind: 'summary', ...october }, now)
 const indicators = summary.sections[0].rows
 assert.deepEqual(
   indicators.map((row) => row[1]),
-  [242000, 95400, 91100, 55500, 220000],
+  [242000, 101736, 91100, 49164, 220000],
 )
 assert.equal(summary.periodLabel, 'С 01.10.2026 по 31.10.2026')
 assert.equal(summary.filename, 'putevoy-svodka-2026-10-01_2026-10-31')
@@ -72,7 +72,7 @@ const worksheet = new TextDecoder().decode(files['xl/worksheets/sheet1.xml'])
 assert.match(shared, /Реестр рейсов/)
 assert.match(shared, /Р-1034/)
 assert.match(worksheet, /86000/)
-assert.match(worksheet, /59100/)
+assert.match(worksheet, /57252/)
 
 const fonts = {
   regular: readFileSync(new URL('../../public/fonts/Roboto-Regular.ttf', import.meta.url)),
