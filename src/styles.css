@@ -392,6 +392,33 @@ input[readonly] { background: #f6f1ea; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field span { font-size: 12px; font-weight: 750; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.city-field { display: flex; flex-direction: column; }
+.city-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid #d9cec1;
+  border-top: 0;
+  background: white;
+  max-height: 220px;
+  overflow: auto;
+}
+.city-list button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  background: white;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.city-list button.is-active,
+.city-list button:hover { background: #f3eadf; }
+.city-list button span { color: var(--muted); font-size: 13px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+.city-empty { padding: 8px 12px; color: var(--muted); font-size: 14px; }
 .wide { grid-column: 1 / -1; }
 .form-actions { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .form-actions-right { display: flex; gap: 8px; }

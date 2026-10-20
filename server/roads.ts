@@ -41,6 +41,10 @@ export function ensureRoadCache(db: Sql) {
   }
 }
 
+export function cityCatalog() {
+  return cities.map((city) => ({ n: city.name, r: city.region, p: city.population }))
+}
+
 export async function lookupRoutes(db: Sql, pairs: Pair[]): Promise<RoadLeg[]> {
   const unique: Pair[] = []
   const seen = new Set<string>()

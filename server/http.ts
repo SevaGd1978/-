@@ -33,7 +33,7 @@ import {
   type DbResult,
 } from './db.ts'
 import { syncPlaton } from './platon.ts'
-import { lookupRoutes } from './roads.ts'
+import { cityCatalog, lookupRoutes } from './roads.ts'
 
 const WRITE_RIGHT: Record<string, Right> = {
   trips: 'trips',
@@ -126,6 +126,10 @@ async function handleApi(db: DatabaseSync, req: IncomingMessage, res: ServerResp
       return
     }
     if (!actor) return deny(res)
+    if (method === 'GET' && pathname === '/api/cities') {
+      sendJson(res, 200, { cities: cityCatalog() })
+      return
+    }
     if (method === 'POST' && pathname === '/api/routes') {
       const body = await readJson(req)
       const pairs = parseRoutePairs(body)

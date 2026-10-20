@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { matchCity, type CityPoint } from './cities.ts'
+import { cityChoice, matchCity, suggestCities, type CityPoint } from './cities.ts'
 
 const cities: CityPoint[] = [
   { name: 'Казань', region: 'Татарстан', lat: 55.79, lon: 49.11, population: 1_300_000 },
@@ -16,5 +16,19 @@ assert.equal(matchCity('Мирный', cities)?.region, 'Якутия')
 assert.equal(matchCity('Советск, Кировская', cities)?.region, 'Кировская')
 assert.equal(matchCity('Неттакогогорода', cities), null)
 assert.equal(matchCity('   ', cities), null)
+
+assert.equal(suggestCities('каз', cities)[0]?.name, 'Казань')
+assert.equal(suggestCities('каз', cities).length, 1)
+assert.equal(suggestCities('г. каз', cities)[0]?.name, 'Казань')
+assert.deepEqual(
+  suggestCities('совет', cities).map((city) => city.region),
+  ['Калининградская', 'Кировская', 'Тульская'],
+)
+assert.equal(suggestCities('Советск, Кировская', cities)[0]?.region, 'Кировская')
+assert.equal(suggestCities('татар', cities)[0]?.name, 'Казань')
+assert.equal(suggestCities('', cities, 2)[0]?.name, 'Казань')
+assert.equal(suggestCities('неттакого', cities).length, 0)
+assert.equal(cityChoice(cities[0], cities), 'Казань')
+assert.equal(cityChoice(cities.find((city) => city.region === 'Кировская')!, cities), 'Советск, Кировская')
 
 console.log('cities tests ok')

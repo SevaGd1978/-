@@ -21,6 +21,7 @@ import {
 import { vehicleDuty } from './fleetStatus'
 import { uid, useData } from './store'
 import type { Driver, Payment, RepairJob, Trip, TripExpense, Vehicle } from './types'
+import { CityField } from './CityField'
 import { Field, FormError, FormFooter } from './ui'
 
 function vehicleOption(vehicle: Vehicle, trips: Trip[]) {
@@ -109,12 +110,8 @@ export function TripForm({
       <Field label="Дата выхода">
         <input type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
       </Field>
-      <Field label="Откуда">
-        <input value={from} onChange={(event) => setFrom(event.target.value)} placeholder="Казань" />
-      </Field>
-      <Field label="Куда">
-        <input value={to} onChange={(event) => setTo(event.target.value)} placeholder="Пермь" />
-      </Field>
+      <CityField label="Откуда" value={from} onChange={setFrom} placeholder="Казань" />
+      <CityField label="Куда" value={to} onChange={setTo} placeholder="Пермь" />
       <Field label="Машина">
         <select value={vehicleId} onChange={(event) => setVehicleId(event.target.value)}>
           <option value="">Выберите машину</option>
