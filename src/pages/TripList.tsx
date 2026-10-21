@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { debtOf, expenseWithVat, isOverdue, parseMoney, payMark, sumAmounts, sumExpenses } from '../calc'
 import {
   dateRu,
@@ -28,6 +29,10 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
   const [status, setStatus] = useState<TripStatus | 'all'>('all')
   const [creating, setCreating] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [previewId, setPreviewId] = useState<string | null>(null)
+  const [previewBox, setPreviewBox] = useState<{ top: number; left: number; width: number } | null>(null)
+  const previewRow = useRef<HTMLTableRowElement | null>(null)
+  const hidePreviewTimer = useRef<number | null>(null)
   const today = todayIso()
   const routePairs = useMemo(
     () => state.trips.map((trip) => ({ from: trip.from, to: trip.to })),
@@ -78,6 +83,49 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
 
   const selected =
     selectedId === '' ? null : (rows.find((row) => row.trip.id === selectedId) ?? rows[0] ?? null)
+  const preview = rows.find((row) => row.trip.id === previewId) ?? null
+
+  useEffect(() => {
+    if (!previewId) return
+    function place() {
+      const row = previewRow.current
+      if (!row) return
+      const rect = row.getBoundingClientRect()
+      if (rect.bottom < 0 || rect.top > window.innerHeight) {
+        setPreviewId(null)
+        return
+      }
+      setPreviewBox(previewBoxFor(rect))
+    }
+    place()
+    window.addEventListener('scroll', place, true)
+    window.addEventListener('resize', place)
+    return () => {
+      window.removeEventListener('scroll', place, true)
+      window.removeEventListener('resize', place)
+    }
+  }, [previewId])
+
+  useEffect(() => {
+    return () => {
+      if (hidePreviewTimer.current) window.clearTimeout(hidePreviewTimer.current)
+    }
+  }, [])
+
+  function showPreview(id: string, row: HTMLTableRowElement) {
+    if (hidePreviewTimer.current) window.clearTimeout(hidePreviewTimer.current)
+    previewRow.current = row
+    setPreviewId(id)
+    setPreviewBox(previewBoxFor(row.getBoundingClientRect()))
+  }
+
+  function queueHidePreview() {
+    if (hidePreviewTimer.current) window.clearTimeout(hidePreviewTimer.current)
+    hidePreviewTimer.current = window.setTimeout(() => {
+      setPreviewId(null)
+      previewRow.current = null
+    }, 160)
+  }
 
   return (
     <div className="stack">
@@ -149,6 +197,8 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
                         aria-selected={active}
                         onClick={() => setSelectedId(row.trip.id)}
                         onDoubleClick={() => onOpen(row.trip.id)}
+                        onMouseEnter={(event) => showPreview(row.trip.id, event.currentTarget)}
+                        onMouseLeave={queueHidePreview}
                       >
                         <td className="pay-col">
                           <PayDot status={row.trip.status} rate={row.trip.rate} paid={row.paid} />
@@ -222,6 +272,38 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
           </aside>
         </div>
       )}
+      {preview && previewBox
+        ? createPortal(
+            <aside
+              className="trip-preview"
+              style={{ top: previewBox.top, left: previewBox.left, width: previewBox.width }}
+              aria-label={`Предпросмотр ${preview.trip.number}`}
+              onMouseEnter={() => {
+                if (hidePreviewTimer.current) window.clearTimeout(hidePreviewTimer.current)
+              }}
+              onMouseLeave={queueHidePreview}
+            >
+              <TripCard
+                number={preview.trip.number}
+                customer={preview.trip.customer}
+                route={`${preview.trip.from} — ${preview.trip.to}`}
+                distance={roadDetail(routes[legKey(preview.trip.from, preview.trip.to)], ready)}
+                federal={federalLabel(routes[legKey(preview.trip.from, preview.trip.to)]?.federalKm)}
+                geometry={null}
+                cargo={preview.trip.weightTons ? `${preview.trip.cargo} · ${preview.trip.weightTons} т` : preview.trip.cargo}
+                vehicle={preview.vehicle ? `${preview.vehicle.model} · ${preview.vehicle.plate}` : 'Машина не указана'}
+                driver={preview.driver?.name ?? 'Водитель не указан'}
+                phone={preview.driver?.phone || 'Телефон не указан'}
+                rate={preview.trip.rate}
+                paid={preview.paid}
+                debt={preview.debt}
+                status={preview.trip.status}
+                onOpen={() => onOpen(preview.trip.id)}
+              />
+            </aside>,
+            document.body,
+          )
+        : null}
       {creating ? (
         <Drawer title="Новый рейс" onClose={() => setCreating(false)}>
           <TripForm
@@ -237,6 +319,17 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
       ) : null}
     </div>
   )
+}
+
+function previewBoxFor(rect: DOMRect) {
+  const margin = 8
+  const width = Math.min(340, window.innerWidth - margin * 2)
+  const height = Math.min(560, window.innerHeight - margin * 2)
+  let left = window.innerWidth - margin - width
+  if (rect.right + margin + width <= window.innerWidth - margin) left = rect.right + margin
+  let top = Math.min(rect.top, window.innerHeight - margin - height)
+  if (top < margin) top = margin
+  return { top, left, width }
 }
 
 function TripCard({
