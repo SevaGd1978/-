@@ -76,6 +76,10 @@ CREATE TABLE IF NOT EXISTS payments (
   comment TEXT NOT NULL,
   position INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS customers (
+  name TEXT PRIMARY KEY,
+  seen_at INTEGER NOT NULL
+);
 `
 
 export function openDatabase(file: string): Sql {
@@ -87,6 +91,7 @@ export function openDatabase(file: string): Sql {
   ensureVehicleStatus(db)
   ensureRoadCache(db)
   ensureAccounts(db)
+  rememberTripCustomers(db)
   const seeded = db.prepare(`SELECT value FROM meta WHERE key = 'seeded'`).get() as { value: string } | undefined
   if (!seeded) {
     transaction(db, () => {
@@ -179,6 +184,7 @@ export function saveTrip(db: Sql, trip: Trip): DbResult {
       trip.note,
       position,
     )
+    rememberCustomer(db, trip.customer)
     return done(db)
   })
 }
@@ -336,6 +342,7 @@ function writeState(db: Sql, state: State, version: number) {
   insertVehicles(db, state.vehicles)
   insertDrivers(db, state.drivers)
   insertTrips(db, state.trips)
+  replaceCustomers(db, state.trips.map((trip) => trip.customer))
   insertExpenses(db, state.expenses)
   insertRepairs(db, state.repairs)
   insertPayments(db, state.payments)
@@ -518,5 +525,31 @@ function readState(db: Sql): State {
         `SELECT id, trip_id AS tripId, date, amount, method, counterparty, comment FROM payments ORDER BY position DESC`,
       )
       .all() as unknown as Payment[],
+    customers: (
+      db.prepare(`SELECT name FROM customers ORDER BY seen_at DESC, name`).all() as { name: string }[]
+    ).map((row) => row.name),
   }
+}
+
+function rememberCustomer(db: Sql, name: string) {
+  const trimmed = name.trim().replace(/\s+/g, ' ')
+  if (!trimmed) return
+  db.prepare(
+    `INSERT INTO customers (name, seen_at) VALUES (?, ?)
+     ON CONFLICT(name) DO UPDATE SET seen_at = excluded.seen_at`,
+  ).run(trimmed, Date.now())
+}
+
+function rememberTripCustomers(db: Sql) {
+  const rows = db.prepare(`SELECT DISTINCT customer FROM trips`).all() as { customer: string }[]
+  for (const row of rows) {
+    const name = row.customer.trim().replace(/\s+/g, ' ')
+    if (!name) continue
+    db.prepare(`INSERT INTO customers (name, seen_at) VALUES (?, 0) ON CONFLICT(name) DO NOTHING`).run(name)
+  }
+}
+
+function replaceCustomers(db: Sql, names: string[]) {
+  db.exec(`DELETE FROM customers`)
+  for (const name of names) rememberCustomer(db, name)
 }

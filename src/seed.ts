@@ -210,6 +210,7 @@ export function createSeed(): State {
         odometer: null,
       },
     ],
+    customers: [],
     payments: [
       {
         id: 'p1',

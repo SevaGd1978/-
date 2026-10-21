@@ -179,7 +179,9 @@ export function App() {
           {offline && ready ? <p className="net-banner">Нет связи с общей базой. Показаны последние полученные данные.</p> : null}
           {ready && screen.name === 'dashboard' ? <Dashboard onOpenTrip={(id) => go({ name: 'trip', id })} /> : null}
           {ready && screen.name === 'trips' ? <TripList onOpen={(id) => go({ name: 'trip', id })} /> : null}
-          {ready && screen.name === 'trip' ? <TripDetail id={screen.id} onBack={() => go({ name: 'trips' })} /> : null}
+          {ready && screen.name === 'trip' ? (
+            <TripDetail id={screen.id} onBack={() => go({ name: 'trips' })} onOpen={(id) => go({ name: 'trip', id })} />
+          ) : null}
           {ready && screen.name === 'expenses' ? <ExpensesPage onOpenTrip={(id) => go({ name: 'trip', id })} /> : null}
           {ready && screen.name === 'repair' ? <RepairPage /> : null}
           {ready && screen.name === 'payments' ? <PaymentsPage onOpenTrip={(id) => go({ name: 'trip', id })} /> : null}

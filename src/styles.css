@@ -584,6 +584,10 @@ input[readonly] { background: #f6f1ea; }
 .trip-preview .trip-facts { gap: 6px; }
 .trip-preview .section-head { position: sticky; top: 0; background: var(--card); z-index: 1; }
 .trip-preview .btn { position: sticky; bottom: 0; width: 100%; background: var(--card); }
+.trip-actions { display: flex; gap: 8px; }
+.trip-actions .btn { flex: 1 1 0; }
+.trip-preview .trip-actions { position: sticky; bottom: 0; background: var(--card); z-index: 1; }
+.trip-preview .trip-actions .btn { position: static; width: auto; }
 .trip-sheet .is-cancelled { opacity: 0.72; }
 .trip-sheet .is-overdue { color: var(--bad); font-weight: 700; }
 .trip-expenses {
@@ -595,6 +599,7 @@ input[readonly] { background: #f6f1ea; }
 .trip-expenses table { min-width: 0; }
 .trip-expense-form { display: grid; gap: 8px; }
 .trip-side .btn { width: 100%; }
+.trip-side .trip-actions .btn { width: auto; }
 .trip-side { display: grid; align-content: start; gap: 12px; }
 .trip-facts { margin: 0; display: grid; gap: 8px; }
 .trip-facts dt {

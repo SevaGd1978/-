@@ -12,7 +12,7 @@ import {
   tripStatuses,
   tripTone,
 } from '../format'
-import { TripForm } from '../forms'
+import { CopyTripDrawer, TripForm } from '../forms'
 import { RoadMap } from '../RoadMap'
 import { useAuth } from '../auth'
 import { federalLabel, legKey, roadDetail, roadKm } from '../roads'
@@ -28,12 +28,21 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<TripStatus | 'all'>('all')
   const [creating, setCreating] = useState(false)
+  const [copySource, setCopySource] = useState<Trip | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [previewId, setPreviewId] = useState<string | null>(null)
   const [previewBox, setPreviewBox] = useState<{ top: number; left: number; width: number } | null>(null)
   const previewRow = useRef<HTMLTableRowElement | null>(null)
   const hidePreviewTimer = useRef<number | null>(null)
   const today = todayIso()
+
+  function beginCopy(trip: Trip) {
+    if (hidePreviewTimer.current) window.clearTimeout(hidePreviewTimer.current)
+    setPreviewId(null)
+    setPreviewBox(null)
+    setCreating(false)
+    setCopySource(trip)
+  }
   const routePairs = useMemo(
     () => state.trips.map((trip) => ({ from: trip.from, to: trip.to })),
     [state.trips],
@@ -150,8 +159,20 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
             </option>
           ))}
         </select>
+        {allowed && selected ? (
+          <button type="button" className="btn ghost" onClick={() => beginCopy(selected.trip)}>
+            Копировать
+          </button>
+        ) : null}
         {allowed ? (
-          <button type="button" className="btn primary" onClick={() => setCreating(true)}>
+          <button
+            type="button"
+            className="btn primary"
+            onClick={() => {
+              setCopySource(null)
+              setCreating(true)
+            }}
+          >
             Новый рейс
           </button>
         ) : null}
@@ -263,6 +284,7 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
                   debt={selected.debt}
                   status={selected.trip.status}
                   onOpen={() => onOpen(selected.trip.id)}
+                  onCopy={allowed ? () => beginCopy(selected.trip) : undefined}
                 />
                 <TripExpenses trip={selected.trip} total={selected.expenses} count={selected.expenseCount} />
               </>
@@ -299,6 +321,7 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
                 debt={preview.debt}
                 status={preview.trip.status}
                 onOpen={() => onOpen(preview.trip.id)}
+                onCopy={allowed ? () => beginCopy(preview.trip) : undefined}
               />
             </aside>,
             document.body,
@@ -316,6 +339,16 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
             }}
           />
         </Drawer>
+      ) : null}
+      {copySource ? (
+        <CopyTripDrawer
+          source={copySource}
+          onClose={() => setCopySource(null)}
+          onSaved={(trip) => {
+            setSelectedId(trip.id)
+            setCopySource(null)
+          }}
+        />
       ) : null}
     </div>
   )
@@ -348,6 +381,7 @@ function TripCard({
   debt,
   status,
   onOpen,
+  onCopy,
 }: {
   number: string
   customer: string
@@ -364,6 +398,7 @@ function TripCard({
   debt: number
   status: TripStatus
   onOpen: () => void
+  onCopy?: () => void
 }) {
   return (
     <>
@@ -420,9 +455,16 @@ function TripCard({
           <strong className="num">{money(debt)}</strong>
         </li>
       </ul>
-      <button type="button" className="btn small" onClick={onOpen}>
-        Открыть рейс
-      </button>
+      <div className="trip-actions">
+        <button type="button" className="btn small" onClick={onOpen}>
+          Открыть рейс
+        </button>
+        {onCopy ? (
+          <button type="button" className="btn small" onClick={onCopy}>
+            Копировать
+          </button>
+        ) : null}
+      </div>
     </>
   )
 }

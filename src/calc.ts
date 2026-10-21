@@ -72,6 +72,26 @@ export function nextTripNumber(trips: { number: string }[]) {
   return `Р-${String(max + 1).padStart(4, '0')}`
 }
 
+/** Новый рейс по образцу: коммерческие поля те же, учётные — свои. Расходы и оплаты не входят в рейс. */
+export function copiedTrip(source: Trip, trips: { number: string }[], today: string): Trip {
+  return {
+    id: '',
+    number: nextTripNumber(trips),
+    date: today,
+    from: source.from,
+    to: source.to,
+    vehicleId: source.vehicleId,
+    driverId: source.driverId,
+    customer: source.customer,
+    cargo: source.cargo,
+    weightTons: source.weightTons,
+    rate: source.rate,
+    payDue: '',
+    status: 'planned',
+    note: source.note,
+  }
+}
+
 export function parseMoney(raw: string) {
   const cleaned = raw.replace(/\s/g, '').replace(',', '.').trim()
   if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null

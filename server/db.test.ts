@@ -42,6 +42,15 @@ try {
   assert.equal(saved.state.trips[0]?.from, 'Москва')
   assert.equal(saved.state.trips[0]?.to, 'Тула')
   assert.equal(saved.version, 2)
+  assert.equal(saved.state.customers.includes('ООО «Теплосеть»'), true)
+  const named = saveTrip(opened, { ...seed.trips[0], id: 't_customer', number: 'Р-2001', customer: 'ЗАО «Север»' })
+  assert.equal(named.ok, true)
+  if (!named.ok) throw new Error('customer')
+  assert.equal(named.state.customers.includes('ЗАО «Север»'), true)
+  const dropped = deleteTrip(opened, 't_customer')
+  assert.equal(dropped.ok, true)
+  if (!dropped.ok) throw new Error('drop customer trip')
+  assert.equal(dropped.state.customers.includes('ЗАО «Север»'), true)
 
   const again = openDatabase(file)
   const shared = again.prepare(`SELECT number FROM trips WHERE id = 't_new'`).get() as { number: string }

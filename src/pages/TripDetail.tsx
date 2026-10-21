@@ -11,7 +11,7 @@ import {
   tripStatuses,
   tripTone,
 } from '../format'
-import { ExpenseForm, PaymentForm, TripForm } from '../forms'
+import { CopyTripDrawer, ExpenseForm, PaymentForm, TripForm } from '../forms'
 import { RoadMap } from '../RoadMap'
 import { useAuth } from '../auth'
 import { federalLabel, legKey, roadDetail } from '../roads'
@@ -20,7 +20,7 @@ import { useRoadRoutes } from '../useRoutes'
 import type { Payment, Trip, TripExpense, TripStatus } from '../types'
 import { Badge, ConfirmDialog, Drawer, Empty, ExpenseAmount } from '../ui'
 
-export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
+export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => void; onOpen: (id: string) => void }) {
   const { state, saveTrip, deleteTrip, saveExpense, deleteExpense, savePayment, deletePayment } = useData()
   const { can } = useAuth()
   const editTrip = can('trips')
@@ -28,6 +28,7 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const editPayment = can('payments')
   const trip = state.trips.find((item) => item.id === id)
   const [editing, setEditing] = useState(false)
+  const [copying, setCopying] = useState(false)
   const [expenseEditor, setExpenseEditor] = useState<TripExpense | 'new' | null>(null)
   const [paymentEditor, setPaymentEditor] = useState<Payment | 'new' | null>(null)
   const [confirm, setConfirm] = useState<{ text: string; confirmLabel: string; run: () => void } | null>(null)
@@ -71,6 +72,11 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
         {editTrip ? (
           <button type="button" className="btn ghost" onClick={() => setEditing(true)}>
             Редактировать
+          </button>
+        ) : null}
+        {editTrip ? (
+          <button type="button" className="btn ghost" onClick={() => setCopying(true)}>
+            Копировать
           </button>
         ) : null}
         {editTrip ? (
@@ -289,6 +295,17 @@ export function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
           )}
         </section>
       </div>
+
+      {copying ? (
+        <CopyTripDrawer
+          source={trip}
+          onClose={() => setCopying(false)}
+          onSaved={(next) => {
+            setCopying(false)
+            onOpen(next.id)
+          }}
+        />
+      ) : null}
 
       {editing ? (
         <Drawer title={`Рейс ${trip.number}`} onClose={() => setEditing(false)}>

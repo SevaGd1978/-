@@ -80,4 +80,5 @@ export interface State {
   expenses: TripExpense[]
   repairs: RepairJob[]
   payments: Payment[]
+  customers: string[]
 }

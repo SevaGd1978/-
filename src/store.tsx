@@ -24,7 +24,7 @@ interface DataApi {
   resetDemo: () => Promise<boolean>
 }
 
-const EMPTY: State = { vehicles: [], drivers: [], trips: [], expenses: [], repairs: [], payments: [] }
+const EMPTY: State = { vehicles: [], drivers: [], trips: [], expenses: [], repairs: [], payments: [], customers: [] }
 
 const DataContext = createContext<DataApi | null>(null)
 

@@ -6,6 +6,7 @@ import {
   inPeriod,
   isOverdue,
   marginOf,
+  copiedTrip,
   nextTripNumber,
   parseMoney,
   payMark,
@@ -55,6 +56,30 @@ assert.equal(isOverdue(trip({ payDue: '2026-10-20' }), 100, '2026-10-18'), false
 assert.equal(isOverdue(trip({ status: 'cancelled', payDue: '2026-10-01' }), 100, '2026-10-18'), false)
 assert.equal(nextTripNumber([trip({ number: 'Р-1034' }), trip({ number: 'Р-1041' })]), 'Р-1042')
 assert.equal(nextTripNumber([]), 'Р-1001')
+const source = trip({
+  id: 't9',
+  number: 'Р-1038',
+  date: '2026-09-01',
+  status: 'delivered',
+  payDue: '2026-09-15',
+  customer: 'АО «Строй»',
+  note: 'срочно',
+  rate: 54000,
+})
+const copy = copiedTrip(source, [source, trip({ number: 'Р-1041' })], '2026-10-21')
+assert.equal(copy.id, '')
+assert.equal(copy.number, 'Р-1042')
+assert.equal(copy.date, '2026-10-21')
+assert.equal(copy.status, 'planned')
+assert.equal(copy.payDue, '')
+assert.equal(copy.customer, 'АО «Строй»')
+assert.equal(copy.from, 'Казань')
+assert.equal(copy.to, 'Пермь')
+assert.equal(copy.rate, 54000)
+assert.equal(copy.note, 'срочно')
+assert.equal(copy.vehicleId, source.vehicleId)
+assert.equal(source.status, 'delivered')
+assert.equal(source.payDue, '2026-09-15')
 assert.equal(parseMoney('1 200,50'), 1200.5)
 assert.equal(parseMoney('0'), 0)
 assert.equal(parseMoney('-5'), null)

@@ -48,6 +48,11 @@ function day(value: unknown): string | null {
   return value
 }
 
+function optionalDay(value: unknown): string | null {
+  if (value == null || value === '') return ''
+  return day(value)
+}
+
 function money(value: unknown): number | null {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1_000_000_000) return null
   return Math.round(value * 100) / 100
@@ -107,7 +112,7 @@ export function parseTrip(value: unknown): Trip | null {
     cargo: text(row.cargo, 160),
     weightTons: tons(row.weightTons),
     rate: money(row.rate),
-    payDue: day(row.payDue),
+    payDue: optionalDay(row.payDue),
     status: typeof status === 'string' && TRIP_STATUS.has(status as TripStatus) ? (status as TripStatus) : null,
     note,
   }
@@ -123,7 +128,7 @@ export function parseTrip(value: unknown): Trip | null {
     !parsed.cargo ||
     parsed.weightTons == null ||
     parsed.rate == null ||
-    !parsed.payDue ||
+    parsed.payDue == null ||
     !parsed.status ||
     parsed.note == null
   ) {

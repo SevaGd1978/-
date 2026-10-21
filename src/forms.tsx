@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { debtOf, nextTripNumber, parseMoney, parseOdometer, parseWeight, round2, sumAmounts } from './calc'
+import { copiedTrip, debtOf, nextTripNumber, parseMoney, parseOdometer, parseWeight, round2, sumAmounts } from './calc'
 import {
   dateRu,
   expenseCategories,
@@ -22,7 +22,9 @@ import { vehicleDuty } from './fleetStatus'
 import { uid, useData } from './store'
 import type { Driver, Payment, RepairJob, Trip, TripExpense, Vehicle } from './types'
 import { CityField } from './CityField'
-import { Field, FormError, FormFooter } from './ui'
+import { CustomerField } from './CustomerField'
+import { customerCatalog } from './customers'
+import { Drawer, Field, FormError, FormFooter } from './ui'
 
 function vehicleOption(vehicle: Vehicle, trips: Trip[]) {
   const duty = vehicleDuty(vehicle.status, trips, vehicle.id)
@@ -85,7 +87,7 @@ export function TripForm({
       return
     }
     onSubmit({
-      id: initial?.id ?? uid('t'),
+      id: initial?.id || uid('t'),
       number: number.trim(),
       date,
       from: from.trim(),
@@ -132,9 +134,12 @@ export function TripForm({
           ))}
         </select>
       </Field>
-      <Field label="Заказчик">
-        <input value={customer} onChange={(event) => setCustomer(event.target.value)} />
-      </Field>
+      <CustomerField
+        label="Заказчик"
+        value={customer}
+        onChange={setCustomer}
+        catalog={customerCatalog(state.customers, state.trips)}
+      />
       <Field label="Груз">
         <input value={cargo} onChange={(event) => setCargo(event.target.value)} />
       </Field>
@@ -164,6 +169,35 @@ export function TripForm({
         <FormFooter onCancel={onCancel} onDelete={onDelete} />
       </div>
     </form>
+  )
+}
+
+export function CopyTripDrawer({
+  source,
+  onClose,
+  onSaved,
+}: {
+  source: Trip
+  onClose: () => void
+  onSaved: (trip: Trip) => void
+}) {
+  const { state, saveTrip } = useData()
+  const draft = copiedTrip(source, state.trips, todayIso())
+  return (
+    <Drawer title={`Копия ${source.number}`} onClose={onClose}>
+      <p className="hint">
+        Новый рейс по образцу {source.number}: маршрут, заказчик, груз, машина, водитель и ставка. Номер {draft.number},
+        дата сегодня, статус «Запланирован». Расходы и оплаты исходного рейса остаются на нём. Платон для копии
+        считается заново.
+      </p>
+      <TripForm
+        initial={draft}
+        onCancel={onClose}
+        onSubmit={async (trip) => {
+          if (await saveTrip(trip)) onSaved(trip)
+        }}
+      />
+    </Drawer>
   )
 }
 
