@@ -33,7 +33,9 @@ import {
   type DbResult,
 } from './db.ts'
 import { syncPlaton } from './platon.ts'
+import { checkGibddFines, issueCaptcha } from './gibdd.ts'
 import { cityCatalog, lookupRoutes } from './roads.ts'
+import { splitPlate, stsLooksValid } from '../src/gibdd.ts'
 
 const WRITE_RIGHT: Record<string, Right> = {
   trips: 'trips',
@@ -137,6 +139,20 @@ async function handleApi(db: DatabaseSync, req: IncomingMessage, res: ServerResp
       const routes = await lookupRoutes(db, pairs)
       const updated = syncPlaton(db)
       sendJson(res, 200, { routes, updated })
+      return
+    }
+    if (method === 'GET' && pathname === '/api/gibdd/captcha') {
+      const captcha = await issueCaptcha()
+      if ('error' in captcha) return sendJson(res, 502, captcha)
+      sendJson(res, 200, captcha)
+      return
+    }
+    if (method === 'POST' && pathname === '/api/gibdd/fines') {
+      const body = await readJson(req)
+      const parsed = finesBody(body)
+      if (!parsed) return sendJson(res, 400, { error: 'Укажите госномер, СТС и код с картинки.' })
+      const answer = await checkGibddFines(parsed)
+      sendJson(res, answer.ok ? 200 : 422, answer)
       return
     }
     if (method === 'GET' && pathname === '/api/state') {
@@ -348,6 +364,17 @@ function place(value: unknown) {
   const trimmed = value.trim().replace(/\s+/g, ' ')
   if (!trimmed || trimmed.length > 80) return null
   return trimmed
+}
+
+function finesBody(body: unknown) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null
+  const row = body as Record<string, unknown>
+  const plate = typeof row.plate === 'string' ? splitPlate(row.plate) : null
+  const sts = typeof row.sts === 'string' && stsLooksValid(row.sts) ? row.sts : ''
+  const sessionId = typeof row.sessionId === 'string' && /^[a-f0-9]{32}$/.test(row.sessionId) ? row.sessionId : ''
+  const captchaWord = typeof row.captchaWord === 'string' ? row.captchaWord.trim() : ''
+  if (!plate || !sts || !sessionId || captchaWord.length < 3 || captchaWord.length > 12) return null
+  return { sessionId, captchaWord, regnum: plate.regnum, regreg: plate.regreg, sts }
 }
 
 function fail(error: string): DbResult {

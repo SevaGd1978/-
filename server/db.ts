@@ -89,6 +89,7 @@ export function openDatabase(file: string): Sql {
   db.exec('PRAGMA busy_timeout = 5000')
   db.exec(SCHEMA)
   ensureVehicleStatus(db)
+  ensureVehicleSts(db)
   ensureRoadCache(db)
   ensureAccounts(db)
   rememberTripCustomers(db)
@@ -110,9 +111,9 @@ export function saveVehicle(db: Sql, vehicle: Vehicle): DbResult {
   return transaction(db, () => {
     const position = nextPosition(db, 'vehicles', vehicle.id)
     db.prepare(
-      `INSERT INTO vehicles (id, plate, model, kind, status, position) VALUES (?, ?, ?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET plate = excluded.plate, model = excluded.model, kind = excluded.kind, status = excluded.status`,
-    ).run(vehicle.id, vehicle.plate, vehicle.model, vehicle.kind, vehicle.status, position)
+      `INSERT INTO vehicles (id, plate, model, kind, status, sts, position) VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET plate = excluded.plate, model = excluded.model, kind = excluded.kind, status = excluded.status, sts = excluded.sts`,
+    ).run(vehicle.id, vehicle.plate, vehicle.model, vehicle.kind, vehicle.status, vehicle.sts, position)
     return done(db)
   })
 }
@@ -353,8 +354,12 @@ function writeState(db: Sql, state: State, version: number) {
 }
 
 function insertVehicles(db: Sql, rows: Vehicle[]) {
-  const stmt = db.prepare(`INSERT INTO vehicles (id, plate, model, kind, status, position) VALUES (?, ?, ?, ?, ?, ?)`)
-  rows.forEach((row, index) => stmt.run(row.id, row.plate, row.model, row.kind, row.status, rank(index, rows.length)))
+  const stmt = db.prepare(
+    `INSERT INTO vehicles (id, plate, model, kind, status, sts, position) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  )
+  rows.forEach((row, index) =>
+    stmt.run(row.id, row.plate, row.model, row.kind, row.status, row.sts, rank(index, rows.length)),
+  )
 }
 
 function insertDrivers(db: Sql, rows: Driver[]) {
@@ -490,6 +495,12 @@ function ensureVehicleStatus(db: Sql) {
   db.exec(`ALTER TABLE vehicles ADD COLUMN status TEXT NOT NULL DEFAULT 'available'`)
 }
 
+function ensureVehicleSts(db: Sql) {
+  const columns = db.prepare(`PRAGMA table_info(vehicles)`).all() as { name: string }[]
+  if (columns.some((column) => column.name === 'sts')) return
+  db.exec(`ALTER TABLE vehicles ADD COLUMN sts TEXT NOT NULL DEFAULT ''`)
+}
+
 function readVersion(db: Sql) {
   const row = db.prepare(`SELECT value FROM meta WHERE key = 'version'`).get() as { value: string } | undefined
   return row ? Number(row.value) : 0
@@ -499,7 +510,7 @@ function readState(db: Sql): State {
   return {
     vehicles: db
       .prepare(
-        `SELECT id, plate, model, kind, COALESCE(status, 'available') AS status FROM vehicles ORDER BY position DESC`,
+        `SELECT id, plate, model, kind, COALESCE(status, 'available') AS status, COALESCE(sts, '') AS sts FROM vehicles ORDER BY position DESC`,
       )
       .all() as unknown as Vehicle[],
     drivers: db.prepare(`SELECT id, name, phone FROM drivers ORDER BY position DESC`).all() as unknown as Driver[],

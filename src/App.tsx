@@ -3,6 +3,7 @@ import { debtOf, sumAmounts } from './calc'
 import { longDate } from './format'
 import { Dashboard } from './pages/Dashboard'
 import { ExpensesPage } from './pages/Expenses'
+import { FinesPage } from './pages/Fines'
 import { FleetPage } from './pages/Fleet'
 import { PaymentsPage } from './pages/Payments'
 import { RepairPage } from './pages/Repair'
@@ -16,7 +17,7 @@ import { useData } from './store'
 import { ConfirmDialog } from './ui'
 
 type Screen =
-  | { name: 'dashboard' | 'trips' | 'expenses' | 'repair' | 'payments' | 'reports' | 'fleet' | 'accounts' }
+  | { name: 'dashboard' | 'trips' | 'expenses' | 'repair' | 'payments' | 'reports' | 'fines' | 'fleet' | 'accounts' }
   | { name: 'trip'; id: string }
 
 const NAV: { name: Exclude<Screen['name'], 'trip'>; label: string }[] = [
@@ -25,6 +26,7 @@ const NAV: { name: Exclude<Screen['name'], 'trip'>; label: string }[] = [
   { name: 'expenses', label: 'Расходы' },
   { name: 'repair', label: 'Ремзона' },
   { name: 'payments', label: 'Оплаты' },
+  { name: 'fines', label: 'Штрафы' },
   { name: 'reports', label: 'Отчёты' },
   { name: 'fleet', label: 'Парк' },
 ]
@@ -36,6 +38,7 @@ const KICKER: Record<Screen['name'], string> = {
   expenses: 'Затраты в пути',
   repair: 'Мастерская',
   payments: 'Деньги заказчиков',
+  fines: 'Госавтоинспекция',
   reports: 'Документы',
   fleet: 'Справочник',
   accounts: 'Люди',
@@ -185,6 +188,7 @@ export function App() {
           {ready && screen.name === 'expenses' ? <ExpensesPage onOpenTrip={(id) => go({ name: 'trip', id })} /> : null}
           {ready && screen.name === 'repair' ? <RepairPage /> : null}
           {ready && screen.name === 'payments' ? <PaymentsPage onOpenTrip={(id) => go({ name: 'trip', id })} /> : null}
+          {ready && screen.name === 'fines' ? <FinesPage /> : null}
           {ready && screen.name === 'reports' ? <ReportsPage /> : null}
           {ready && screen.name === 'fleet' ? <FleetPage /> : null}
           {ready && screen.name === 'accounts' ? <AccountsPage /> : null}

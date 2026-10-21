@@ -600,6 +600,10 @@ input[readonly] { background: #f6f1ea; }
 .trip-expense-form { display: grid; gap: 8px; }
 .trip-side .btn { width: 100%; }
 .trip-side .trip-actions .btn { width: auto; }
+.fines-sts { width: 150px; max-width: 100%; }
+.fines-captcha { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.fines-captcha img { width: 200px; height: 80px; object-fit: contain; background: #fff; border: 1px solid var(--line); }
+.fines-captcha .field { width: 180px; }
 .trip-side { display: grid; align-content: start; gap: 12px; }
 .trip-facts { margin: 0; display: grid; gap: 8px; }
 .trip-facts dt {

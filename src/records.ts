@@ -78,9 +78,17 @@ export function parseVehicle(value: unknown): Vehicle | null {
         : typeof status === 'string' && PARK_STATUS.has(status as ParkStatus)
           ? (status as ParkStatus)
           : null,
+    sts: optionalText(row.sts, 16),
   }
-  if (!parsed.id || !parsed.plate || !parsed.model || !parsed.kind || !parsed.status) return null
-  return { id: parsed.id, plate: parsed.plate, model: parsed.model, kind: parsed.kind, status: parsed.status }
+  if (!parsed.id || !parsed.plate || !parsed.model || !parsed.kind || !parsed.status || parsed.sts == null) return null
+  return {
+    id: parsed.id,
+    plate: parsed.plate,
+    model: parsed.model,
+    kind: parsed.kind,
+    status: parsed.status,
+    sts: parsed.sts.toUpperCase().replace(/\s+/g, ''),
+  }
 }
 
 export function parseDriver(value: unknown): Driver | null {

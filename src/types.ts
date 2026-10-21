@@ -17,6 +17,7 @@ export interface Vehicle {
   model: string
   kind: string
   status: ParkStatus
+  sts: string
 }
 
 export interface Driver {

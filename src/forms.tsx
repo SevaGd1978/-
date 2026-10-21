@@ -554,6 +554,7 @@ export function VehicleForm({
   const [model, setModel] = useState(initial?.model ?? '')
   const [kind, setKind] = useState(initial?.kind ?? 'Фура')
   const [status, setStatus] = useState(initial?.status ?? 'available')
+  const [sts, setSts] = useState(initial?.sts ?? '')
   const [error, setError] = useState('')
   const duty = initial ? vehicleDuty(status, state.trips, initial.id) : status
 
@@ -569,6 +570,7 @@ export function VehicleForm({
       model: model.trim(),
       kind: kind.trim(),
       status,
+      sts: sts.toUpperCase().replace(/\s+/g, ''),
     })
   }
 
@@ -576,6 +578,15 @@ export function VehicleForm({
     <form className="form-grid" onSubmit={submit}>
       <Field label="Госномер" wide>
         <input value={plate} onChange={(event) => setPlate(event.target.value)} autoFocus placeholder="А123ВС 116" />
+      </Field>
+      <Field label="СТС" wide>
+        <input
+          value={sts}
+          onChange={(event) => setSts(event.target.value)}
+          placeholder="9912345678"
+          inputMode="text"
+          autoComplete="off"
+        />
       </Field>
       <Field label="Модель">
         <input value={model} onChange={(event) => setModel(event.target.value)} placeholder="Volvo FH" />
