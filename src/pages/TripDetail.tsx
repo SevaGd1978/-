@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react'
-import { debtOf, expenseWithVat, isOverdue, marginOf, sumAmounts, sumExpenses } from '../calc'
+import { debtOf, isOverdue, sumAmounts } from '../calc'
 import {
   dateRu,
-  expenseCategoryLabel,
   money,
   payMethodLabel,
   todayIso,
@@ -11,25 +10,23 @@ import {
   tripStatuses,
   tripTone,
 } from '../format'
-import { CopyTripDrawer, ExpenseForm, PaymentForm, TripForm } from '../forms'
+import { CopyTripDrawer, PaymentForm, TripForm } from '../forms'
 import { RoadMap } from '../RoadMap'
 import { useAuth } from '../auth'
 import { federalLabel, legKey, roadDetail } from '../roads'
 import { useData } from '../store'
 import { useRoadRoutes } from '../useRoutes'
-import type { Payment, Trip, TripExpense, TripStatus } from '../types'
-import { Badge, ConfirmDialog, Drawer, Empty, ExpenseAmount } from '../ui'
+import type { Payment, Trip, TripStatus } from '../types'
+import { Badge, ConfirmDialog, Drawer, Empty } from '../ui'
 
 export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => void; onOpen: (id: string) => void }) {
-  const { state, saveTrip, deleteTrip, saveExpense, deleteExpense, savePayment, deletePayment } = useData()
+  const { state, saveTrip, deleteTrip, savePayment, deletePayment } = useData()
   const { can } = useAuth()
   const editTrip = can('trips')
-  const editExpense = can('expenses')
   const editPayment = can('payments')
   const trip = state.trips.find((item) => item.id === id)
   const [editing, setEditing] = useState(false)
   const [copying, setCopying] = useState(false)
-  const [expenseEditor, setExpenseEditor] = useState<TripExpense | 'new' | null>(null)
   const [paymentEditor, setPaymentEditor] = useState<Payment | 'new' | null>(null)
   const [confirm, setConfirm] = useState<{ text: string; confirmLabel: string; run: () => void } | null>(null)
   const routePairs = useMemo(
@@ -46,16 +43,11 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
 
   const vehicle = state.vehicles.find((item) => item.id === trip.vehicleId)
   const driver = state.drivers.find((item) => item.id === trip.driverId)
-  const expenses = state.expenses
-    .filter((expense) => expense.tripId === trip.id)
-    .sort((a, b) => b.date.localeCompare(a.date))
   const payments = state.payments
     .filter((payment) => payment.tripId === trip.id)
     .sort((a, b) => b.date.localeCompare(a.date))
-  const expenseTotal = sumExpenses(expenses)
   const paid = sumAmounts(payments)
   const debt = debtOf(trip, paid)
-  const margin = marginOf(trip, expenseTotal)
   const overdue = isOverdue(trip, debt, todayIso())
   const leg = routes[legKey(trip.from, trip.to)]
 
@@ -85,7 +77,7 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
           className="btn danger"
           onClick={() =>
             setConfirm({
-              text: `Удалить рейс ${trip.number}? Вместе с ним исчезнут расходы (${expenses.length}) и оплаты (${payments.length}).`,
+              text: `Удалить рейс ${trip.number}? Вместе с ним исчезнут оплаты (${payments.length}). Расходы машины останутся.`,
               confirmLabel: 'Удалить',
               run: () => {
                 void deleteTrip(trip.id).then((ok) => {
@@ -151,10 +143,6 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
           <strong className="num">{money(trip.rate)}</strong>
         </article>
         <article>
-          <span>Расходы</span>
-          <strong className="num">{money(expenseTotal)}</strong>
-        </article>
-        <article>
           <span>Оплачено</span>
           <strong className="num">{money(paid)}</strong>
         </article>
@@ -164,74 +152,10 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
         </article>
       </section>
       <p className="muted">
-        Маржа по ставке {money(margin)} — ставка минус расходы этого рейса. Кроме топлива, расходы с НДС 22%. Срок оплаты: {trip.payDue ? dateRu(trip.payDue) : 'не задан'}.
+        Срок оплаты: {trip.payDue ? dateRu(trip.payDue) : 'не задан'}. Расходы ведутся по машине.
       </p>
 
-      <div className="split">
-        <section className="card">
-          <div className="section-head">
-            <h2>Расходы</h2>
-            {editExpense ? (
-              <button type="button" className="btn small primary" onClick={() => setExpenseEditor('new')}>
-                Добавить расход
-              </button>
-            ) : null}
-          </div>
-          {expenses.length === 0 ? (
-            <Empty title="Расходов пока нет" text="Топливо, зарплата, дороги и погрузка." />
-          ) : (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Дата</th>
-                    <th>Статья</th>
-                    <th className="num">Сумма</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {expenses.map((expense) => (
-                    <tr key={expense.id}>
-                      <td>{dateRu(expense.date)}</td>
-                      <td>
-                        {expenseCategoryLabel[expense.category]}
-                        {expense.comment ? <small className="muted">{expense.comment}</small> : null}
-                      </td>
-                      <td className="num">
-                        <ExpenseAmount category={expense.category} amount={expense.amount} />
-                      </td>
-                      <td className="row-actions">
-                        {editExpense ? (
-                          <>
-                            <button type="button" className="text-btn" onClick={() => setExpenseEditor(expense)}>
-                              Изменить
-                            </button>
-                            <button
-                              type="button"
-                              className="text-btn danger-text"
-                              onClick={() =>
-                                setConfirm({
-                                  text: `Удалить расход ${money(expenseWithVat(expense.category, expense.amount))}?`,
-                                  confirmLabel: 'Удалить',
-                                  run: () => void deleteExpense(expense.id),
-                                })
-                              }
-                            >
-                              Удалить
-                            </button>
-                          </>
-                        ) : null}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-
-        <section className="card">
+      <section className="card">
           <div className="section-head">
             <h2>Оплаты</h2>
             {editPayment ? (
@@ -293,8 +217,7 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
               </table>
             </div>
           )}
-        </section>
-      </div>
+      </section>
 
       {copying ? (
         <CopyTripDrawer
@@ -317,7 +240,7 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
             }}
             onDelete={() =>
               setConfirm({
-                text: `Удалить рейс ${trip.number}? Вместе с ним исчезнут расходы и оплаты.`,
+                text: `Удалить рейс ${trip.number}? Вместе с ним исчезнут оплаты. Расходы машины останутся.`,
                 confirmLabel: 'Удалить',
                 run: () => {
                   void deleteTrip(trip.id).then((ok) => {
@@ -325,35 +248,6 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
                   })
                 },
               })
-            }
-          />
-        </Drawer>
-      ) : null}
-
-      {expenseEditor ? (
-        <Drawer title={expenseEditor === 'new' ? 'Расход по рейсу' : 'Изменить расход'} onClose={() => setExpenseEditor(null)}>
-          <ExpenseForm
-            fixedTripId={trip.id}
-            initial={expenseEditor === 'new' ? undefined : expenseEditor}
-            onCancel={() => setExpenseEditor(null)}
-            onSubmit={async (expense) => {
-              if (await saveExpense(expense)) setExpenseEditor(null)
-            }}
-            onDelete={
-              expenseEditor === 'new'
-                ? undefined
-                : () => {
-                    const current = expenseEditor
-                    setConfirm({
-                      text: `Удалить расход ${money(expenseWithVat(current.category, current.amount))}?`,
-                      confirmLabel: 'Удалить',
-                      run: () => {
-                        void deleteExpense(current.id).then((ok) => {
-                          if (ok) setExpenseEditor(null)
-                        })
-                      },
-                    })
-                  }
             }
           />
         </Drawer>

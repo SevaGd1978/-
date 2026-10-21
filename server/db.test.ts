@@ -63,19 +63,22 @@ try {
 
   const expense = saveExpense(again, {
     id: 'e_new',
-    tripId: 't_new',
+    vehicleId: 'v1',
+    tripId: '',
     date: '2026-10-18',
     category: 'fuel',
     amount: 1500,
     comment: 'АЗС',
   })
   assert.equal(expense.ok, true)
+  if (!expense.ok) throw new Error('expense')
+  assert.equal(expense.state.expenses.find((item) => item.id === 'e_new')?.vehicleId, 'v1')
   const removed = deleteTrip(again, 't_new')
   assert.equal(removed.ok, true)
   if (!removed.ok) throw new Error('removed')
   assert.equal(
     removed.state.expenses.some((item) => item.id === 'e_new'),
-    false,
+    true,
   )
 
   const restored = resetDemo(again)

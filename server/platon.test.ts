@@ -20,10 +20,12 @@ try {
   const state = readResult(db).state
   const kazan = state.expenses.find((expense) => expense.id === 'platon_t1')
   assert.equal(kazan?.category, 'platon')
+  assert.equal(kazan?.vehicleId, 'v1')
+  assert.equal(kazan?.tripId, 't1')
   assert.equal(kazan?.amount, 1131.42)
   assert.equal(kazan?.comment, 'Платон · 218 км федеральных дорог × 5,19 ₽/км')
   assert.equal(
-    state.expenses.some((expense) => expense.tripId === 't3' && expense.id === 'platon_t3'),
+    state.expenses.some((expense) => expense.id === 'platon_t3'),
     false,
   )
   assert.equal(syncPlaton(db), false)

@@ -165,9 +165,11 @@ export function parseExpense(value: unknown): TripExpense | null {
   if (!row) return null
   const category = row.category
   const comment = optionalText(row.comment, 500)
+  const tripId = row.tripId == null || row.tripId === '' ? '' : id(row.tripId)
   const parsed = {
     id: id(row.id),
-    tripId: id(row.tripId),
+    vehicleId: id(row.vehicleId),
+    tripId,
     date: day(row.date),
     category:
       typeof category === 'string' && EXPENSE_CATEGORY.has(category as ExpenseCategory)
@@ -176,11 +178,20 @@ export function parseExpense(value: unknown): TripExpense | null {
     amount: money(row.amount),
     comment,
   }
-  if (!parsed.id || !parsed.tripId || !parsed.date || !parsed.category || parsed.amount == null || parsed.comment == null) {
+  if (
+    !parsed.id ||
+    !parsed.vehicleId ||
+    parsed.tripId == null ||
+    !parsed.date ||
+    !parsed.category ||
+    parsed.amount == null ||
+    parsed.comment == null
+  ) {
     return null
   }
   return {
     id: parsed.id,
+    vehicleId: parsed.vehicleId,
     tripId: parsed.tripId,
     date: parsed.date,
     category: parsed.category,

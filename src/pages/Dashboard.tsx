@@ -32,10 +32,9 @@ export function Dashboard({ onOpenTrip }: { onOpenTrip: (id: string) => void }) 
   }, [state])
 
   const rows = state.trips.map((trip) => {
-    const expenses = sumExpenses(state.expenses.filter((expense) => expense.tripId === trip.id))
     const paid = sumAmounts(state.payments.filter((payment) => payment.tripId === trip.id))
     const debt = debtOf(trip, paid)
-    return { trip, expenses, paid, debt, overdue: isOverdue(trip, debt, today) }
+    return { trip, debt, overdue: isOverdue(trip, debt, today) }
   })
 
   const debtNow = sumAmounts(rows.map((row) => ({ amount: row.debt })))
@@ -118,7 +117,7 @@ export function Dashboard({ onOpenTrip }: { onOpenTrip: (id: string) => void }) 
           <em>Оплаты за рейсы</em>
         </article>
         <article className="kpi">
-          <span>Расходы рейсов</span>
+          <span>Расходы машин</span>
           <strong className="num">{money(tripSpend)}</strong>
           <em>Топливо, дороги, суточные</em>
         </article>
@@ -130,7 +129,7 @@ export function Dashboard({ onOpenTrip }: { onOpenTrip: (id: string) => void }) 
         <article className="kpi">
           <span>Результат</span>
           <strong className={result < 0 ? 'num neg' : 'num pos'}>{money(result)}</strong>
-          <em>Получено минус рейсы и ремзона</em>
+          <em>Получено минус расходы машин и ремзона</em>
         </article>
       </section>
 
@@ -179,7 +178,7 @@ export function Dashboard({ onOpenTrip }: { onOpenTrip: (id: string) => void }) 
 
           <section className="card">
             <div className="section-head">
-              <h2>Расходы рейсов</h2>
+              <h2>Расходы машин</h2>
               <span className="muted">кроме топлива, с НДС {VAT_PERCENT}%</span>
             </div>
             {byCategory.length === 0 ? (

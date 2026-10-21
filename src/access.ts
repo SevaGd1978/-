@@ -1,6 +1,6 @@
 export const RIGHTS = [
   { id: 'trips', label: 'Рейсы', hint: 'Создавать и менять рейсы' },
-  { id: 'expenses', label: 'Расходы', hint: 'Записывать затраты в пути' },
+  { id: 'expenses', label: 'Расходы', hint: 'Записывать затраты по машинам' },
   { id: 'repairs', label: 'Ремзона', hint: 'Вести заявки мастерской' },
   { id: 'payments', label: 'Оплаты', hint: 'Принимать оплату за рейсы' },
   { id: 'fleet', label: 'Парк', hint: 'Менять машины и водителей' },

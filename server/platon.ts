@@ -5,11 +5,13 @@ import { cachedFederalKm } from './roads.ts'
 
 type Sql = DatabaseSync
 
-type TripRow = { id: string; date: string; from_city: string; to_city: string }
-type ExpenseRow = { id: string; category: string; amount: number; comment: string }
+type TripRow = { id: string; date: string; from_city: string; to_city: string; vehicle_id: string }
+type ExpenseRow = { id: string; trip_id: string; category: string; amount: number; comment: string }
 
 export function syncPlaton(db: Sql): boolean {
-  const trips = db.prepare(`SELECT id, date, from_city, to_city FROM trips`).all() as unknown as TripRow[]
+  const trips = db
+    .prepare(`SELECT id, date, from_city, to_city, vehicle_id FROM trips`)
+    .all() as unknown as TripRow[]
   let changed = false
   for (const trip of trips) {
     if (writeTripPlaton(db, trip)) changed = true
@@ -35,24 +37,42 @@ function writeTripPlaton(db: Sql, trip: TripRow) {
     return true
   }
   const expenses = db
-    .prepare(`SELECT id, category, amount, comment FROM expenses WHERE trip_id = ?`)
-    .all(trip.id) as unknown as ExpenseRow[]
-  if (expenses.some((expense) => expense.id !== systemId && mentionsPlaton(expense))) return false
+    .prepare(`SELECT id, trip_id, category, amount, comment FROM expenses WHERE vehicle_id = ?`)
+    .all(trip.vehicle_id) as unknown as ExpenseRow[]
+  if (
+    expenses.some(
+      (expense) =>
+        expense.id !== systemId &&
+        !expense.id.startsWith('platon_') &&
+        expense.trip_id === trip.id &&
+        mentionsPlaton(expense),
+    )
+  ) {
+    return false
+  }
   const comment = platonComment(km, charge.perKm)
-  const current = expenses.find((expense) => expense.id === systemId)
-  if (current && current.category === 'platon' && current.amount === charge.amount && current.comment === comment) return false
+  const current = db.prepare(`SELECT id, vehicle_id, category, amount, comment FROM expenses WHERE id = ?`).get(systemId) as
+    | { id: string; vehicle_id: string; category: string; amount: number; comment: string }
+    | undefined
+  if (
+    current &&
+    current.vehicle_id === trip.vehicle_id &&
+    current.category === 'platon' &&
+    current.amount === charge.amount &&
+    current.comment === comment
+  ) {
+    return false
+  }
   const position = current ? null : nextPosition(db, systemId)
   if (current) {
-    db.prepare(`UPDATE expenses SET date = ?, category = 'platon', amount = ?, comment = ? WHERE id = ?`).run(
-      trip.date,
-      charge.amount,
-      comment,
-      systemId,
-    )
+    db.prepare(
+      `UPDATE expenses SET vehicle_id = ?, date = ?, category = 'platon', amount = ?, comment = ? WHERE id = ?`,
+    ).run(trip.vehicle_id, trip.date, charge.amount, comment, systemId)
   } else {
     db.prepare(
-      `INSERT INTO expenses (id, trip_id, date, category, amount, comment, position) VALUES (?, ?, ?, 'platon', ?, ?, ?)`,
-    ).run(systemId, trip.id, trip.date, charge.amount, comment, position)
+      `INSERT INTO expenses (id, trip_id, vehicle_id, date, category, amount, comment, position)
+       VALUES (?, ?, ?, ?, 'platon', ?, ?, ?)`,
+    ).run(systemId, trip.id, trip.vehicle_id, trip.date, charge.amount, comment, position)
   }
   return true
 }

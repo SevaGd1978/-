@@ -14,13 +14,13 @@ import { useData } from '../store'
 import type { ExpenseCategory, TripExpense } from '../types'
 import { ConfirmDialog, Drawer, Empty, ExpenseAmount } from '../ui'
 
-export function ExpensesPage({ onOpenTrip }: { onOpenTrip: (id: string) => void }) {
+export function ExpensesPage() {
   const { state, saveExpense, deleteExpense } = useData()
   const { can } = useAuth()
   const allowed = can('expenses')
   const [period, setPeriod] = useState(currentPeriod())
   const [category, setCategory] = useState<ExpenseCategory | 'all'>('all')
-  const [tripId, setTripId] = useState('all')
+  const [vehicleId, setVehicleId] = useState('all')
   const [editor, setEditor] = useState<TripExpense | 'new' | null>(null)
   const [confirm, setConfirm] = useState<{ text: string; run: () => void } | null>(null)
 
@@ -30,10 +30,12 @@ export function ExpensesPage({ onOpenTrip }: { onOpenTrip: (id: string) => void 
     return [...keys].sort().reverse()
   }, [state.expenses])
 
+  const vehicles = [...state.vehicles].sort((a, b) => a.plate.localeCompare(b.plate, 'ru'))
+
   const rows = [...state.expenses]
     .filter((expense) => inPeriod(expense.date, period))
     .filter((expense) => (category === 'all' ? true : expense.category === category))
-    .filter((expense) => (tripId === 'all' ? true : expense.tripId === tripId))
+    .filter((expense) => (vehicleId === 'all' ? true : expense.vehicleId === vehicleId))
     .sort((a, b) => b.date.localeCompare(a.date))
 
   return (
@@ -55,15 +57,13 @@ export function ExpensesPage({ onOpenTrip }: { onOpenTrip: (id: string) => void 
             </option>
           ))}
         </select>
-        <select aria-label="Рейс" value={tripId} onChange={(event) => setTripId(event.target.value)}>
-          <option value="all">Все рейсы</option>
-          {[...state.trips]
-            .sort((a, b) => b.date.localeCompare(a.date))
-            .map((trip) => (
-              <option key={trip.id} value={trip.id}>
-                {trip.number} · {trip.from} → {trip.to}
-              </option>
-            ))}
+        <select aria-label="Машина" value={vehicleId} onChange={(event) => setVehicleId(event.target.value)}>
+          <option value="all">Все машины</option>
+          {vehicles.map((vehicle) => (
+            <option key={vehicle.id} value={vehicle.id}>
+              {vehicle.plate} · {vehicle.model}
+            </option>
+          ))}
         </select>
         {allowed ? (
           <button type="button" className="btn primary" onClick={() => setEditor('new')}>
@@ -73,18 +73,19 @@ export function ExpensesPage({ onOpenTrip }: { onOpenTrip: (id: string) => void 
       </div>
       {allowed ? null : <p className="hint">Просмотр. Менять расходы может тот, у кого есть это право.</p>}
       <p className="muted">
-        Итого по фильтру: {money(sumExpenses(rows))}. Кроме топлива, к сумме добавлен НДС {VAT_PERCENT}%.
+        Итого по фильтру: {money(sumExpenses(rows))}. Кроме топлива, к сумме добавлен НДС {VAT_PERCENT}%. Расход
+        записывается на машину и остаётся, если рейс удалить.
       </p>
       <section className="card">
         {rows.length === 0 ? (
-          <Empty title="Расходов нет" text="Добавьте топливо, дороги, суточные или погрузку." />
+          <Empty title="Расходов нет" text="Добавьте топливо, дороги, суточные или погрузку на машину." />
         ) : (
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
                   <th>Дата</th>
-                  <th>Рейс</th>
+                  <th>Машина</th>
                   <th>Статья</th>
                   <th>Комментарий</th>
                   <th className="num">Сумма</th>
@@ -93,19 +94,11 @@ export function ExpensesPage({ onOpenTrip }: { onOpenTrip: (id: string) => void 
               </thead>
               <tbody>
                 {rows.map((expense) => {
-                  const trip = state.trips.find((item) => item.id === expense.tripId)
+                  const vehicle = state.vehicles.find((item) => item.id === expense.vehicleId)
                   return (
                     <tr key={expense.id}>
                       <td>{dateRu(expense.date)}</td>
-                      <td>
-                        {trip ? (
-                          <button type="button" className="linkish" onClick={() => onOpenTrip(trip.id)}>
-                            {trip.number}
-                          </button>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
+                      <td>{vehicle ? vehicle.plate : '—'}</td>
                       <td>{expenseCategoryLabel[expense.category]}</td>
                       <td>{expense.comment || '—'}</td>
                       <td className="num">
@@ -141,10 +134,9 @@ export function ExpensesPage({ onOpenTrip }: { onOpenTrip: (id: string) => void 
         )}
       </section>
       {editor ? (
-        <Drawer title={editor === 'new' ? 'Расход по рейсу' : 'Изменить расход'} onClose={() => setEditor(null)}>
+        <Drawer title={editor === 'new' ? 'Расход по машине' : 'Изменить расход'} onClose={() => setEditor(null)}>
           <ExpenseForm
             initial={editor === 'new' ? undefined : editor}
-            fixedTripId={editor === 'new' ? undefined : editor.tripId}
             onCancel={() => setEditor(null)}
             onSubmit={async (expense) => {
               if (await saveExpense(expense)) setEditor(null)

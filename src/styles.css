@@ -590,14 +590,6 @@ input[readonly] { background: #f6f1ea; }
 .trip-preview .trip-actions .btn { position: static; width: auto; }
 .trip-sheet .is-cancelled { opacity: 0.72; }
 .trip-sheet .is-overdue { color: var(--bad); font-weight: 700; }
-.trip-expenses {
-  display: grid;
-  gap: 10px;
-  padding-top: 8px;
-  border-top: 1px solid var(--line);
-}
-.trip-expenses table { min-width: 0; }
-.trip-expense-form { display: grid; gap: 8px; }
 .trip-side .btn { width: 100%; }
 .trip-side .trip-actions .btn { width: auto; }
 .fines-sts { width: 150px; max-width: 100%; }

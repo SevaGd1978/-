@@ -35,7 +35,7 @@ const KICKER: Record<Screen['name'], string> = {
   dashboard: 'Диспетчерская',
   trips: 'Маршруты',
   trip: 'Маршруты',
-  expenses: 'Затраты в пути',
+  expenses: 'Затраты машин',
   repair: 'Мастерская',
   payments: 'Деньги заказчиков',
   fines: 'Госавтоинспекция',
@@ -185,7 +185,7 @@ export function App() {
           {ready && screen.name === 'trip' ? (
             <TripDetail id={screen.id} onBack={() => go({ name: 'trips' })} onOpen={(id) => go({ name: 'trip', id })} />
           ) : null}
-          {ready && screen.name === 'expenses' ? <ExpensesPage onOpenTrip={(id) => go({ name: 'trip', id })} /> : null}
+          {ready && screen.name === 'expenses' ? <ExpensesPage /> : null}
           {ready && screen.name === 'repair' ? <RepairPage /> : null}
           {ready && screen.name === 'payments' ? <PaymentsPage onOpenTrip={(id) => go({ name: 'trip', id })} /> : null}
           {ready && screen.name === 'fines' ? <FinesPage /> : null}

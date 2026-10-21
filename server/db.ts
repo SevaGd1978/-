@@ -90,6 +90,7 @@ export function openDatabase(file: string): Sql {
   db.exec(SCHEMA)
   ensureVehicleStatus(db)
   ensureVehicleSts(db)
+  ensureExpenseVehicle(db)
   ensureRoadCache(db)
   ensureAccounts(db)
   rememberTripCustomers(db)
@@ -121,8 +122,9 @@ export function saveVehicle(db: Sql, vehicle: Vehicle): DbResult {
 export function deleteVehicle(db: Sql, id: string): DbResult {
   return transaction(db, () => {
     const trips = count(db, `SELECT COUNT(*) AS n FROM trips WHERE vehicle_id = ?`, id)
+    const expenses = count(db, `SELECT COUNT(*) AS n FROM expenses WHERE vehicle_id = ?`, id)
     const repairs = count(db, `SELECT COUNT(*) AS n FROM repairs WHERE vehicle_id = ?`, id)
-    if (trips || repairs) return fail(409, 'Нельзя удалить машину: она есть в рейсе или в ремзоне')
+    if (trips || expenses || repairs) return fail(409, 'Нельзя удалить машину: она есть в рейсе, в расходах или в ремзоне')
     db.prepare(`DELETE FROM vehicles WHERE id = ?`).run(id)
     return done(db)
   })
@@ -192,7 +194,7 @@ export function saveTrip(db: Sql, trip: Trip): DbResult {
 
 export function deleteTrip(db: Sql, id: string): DbResult {
   return transaction(db, () => {
-    db.prepare(`DELETE FROM expenses WHERE trip_id = ?`).run(id)
+    db.prepare(`DELETE FROM expenses WHERE id = ?`).run(`platon_${id}`)
     db.prepare(`DELETE FROM payments WHERE trip_id = ?`).run(id)
     db.prepare(`DELETE FROM trips WHERE id = ?`).run(id)
     return done(db)
@@ -201,17 +203,26 @@ export function deleteTrip(db: Sql, id: string): DbResult {
 
 export function saveExpense(db: Sql, expense: TripExpense): DbResult {
   return transaction(db, () => {
-    if (!count(db, `SELECT COUNT(*) AS n FROM trips WHERE id = ?`, expense.tripId)) {
-      return fail(400, 'Расход привязан к несуществующему рейсу')
+    if (!count(db, `SELECT COUNT(*) AS n FROM vehicles WHERE id = ?`, expense.vehicleId)) {
+      return fail(400, 'Выберите машину из парка')
     }
     const position = nextPosition(db, 'expenses', expense.id)
     db.prepare(
-      `INSERT INTO expenses (id, trip_id, date, category, amount, comment, position)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO expenses (id, trip_id, vehicle_id, date, category, amount, comment, position)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
-         trip_id = excluded.trip_id, date = excluded.date, category = excluded.category,
+         vehicle_id = excluded.vehicle_id, date = excluded.date, category = excluded.category,
          amount = excluded.amount, comment = excluded.comment`,
-    ).run(expense.id, expense.tripId, expense.date, expense.category, expense.amount, expense.comment, position)
+    ).run(
+      expense.id,
+      expense.tripId,
+      expense.vehicleId,
+      expense.date,
+      expense.category,
+      expense.amount,
+      expense.comment,
+      position,
+    )
     return done(db)
   })
 }
@@ -397,10 +408,20 @@ function insertTrips(db: Sql, rows: Trip[]) {
 
 function insertExpenses(db: Sql, rows: TripExpense[]) {
   const stmt = db.prepare(
-    `INSERT INTO expenses (id, trip_id, date, category, amount, comment, position) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO expenses (id, trip_id, vehicle_id, date, category, amount, comment, position)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   rows.forEach((row, index) =>
-    stmt.run(row.id, row.tripId, row.date, row.category, row.amount, row.comment, rank(index, rows.length)),
+    stmt.run(
+      row.id,
+      row.tripId,
+      row.vehicleId,
+      row.date,
+      row.category,
+      row.amount,
+      row.comment,
+      rank(index, rows.length),
+    ),
   )
 }
 
@@ -501,6 +522,20 @@ function ensureVehicleSts(db: Sql) {
   db.exec(`ALTER TABLE vehicles ADD COLUMN sts TEXT NOT NULL DEFAULT ''`)
 }
 
+function ensureExpenseVehicle(db: Sql) {
+  const columns = db.prepare(`PRAGMA table_info(expenses)`).all() as { name: string }[]
+  if (!columns.some((column) => column.name === 'vehicle_id')) {
+    db.exec(`ALTER TABLE expenses ADD COLUMN vehicle_id TEXT NOT NULL DEFAULT ''`)
+  }
+  db.exec(
+    `UPDATE expenses
+     SET vehicle_id = (SELECT vehicle_id FROM trips WHERE trips.id = expenses.trip_id)
+     WHERE vehicle_id = ''
+       AND trip_id != ''
+       AND EXISTS (SELECT 1 FROM trips WHERE trips.id = expenses.trip_id)`,
+  )
+}
+
 function readVersion(db: Sql) {
   const row = db.prepare(`SELECT value FROM meta WHERE key = 'version'`).get() as { value: string } | undefined
   return row ? Number(row.value) : 0
@@ -522,7 +557,10 @@ function readState(db: Sql): State {
       )
       .all() as unknown as Trip[],
     expenses: db
-      .prepare(`SELECT id, trip_id AS tripId, date, category, amount, comment FROM expenses ORDER BY position DESC`)
+      .prepare(
+        `SELECT id, vehicle_id AS vehicleId, trip_id AS tripId, date, category, amount, comment
+         FROM expenses ORDER BY position DESC`,
+      )
       .all() as unknown as TripExpense[],
     repairs: db
       .prepare(

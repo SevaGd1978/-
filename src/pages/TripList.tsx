@@ -1,11 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { debtOf, expenseWithVat, isOverdue, parseMoney, payMark, sumAmounts, sumExpenses } from '../calc'
+import { debtOf, isOverdue, payMark, sumAmounts } from '../calc'
 import {
   dateRu,
-  expenseCategories,
-  expenseCategoryLabel,
-  expenseEntryHint,
   money,
   todayIso,
   tripStatusLabel,
@@ -16,10 +13,10 @@ import { CopyTripDrawer, TripForm } from '../forms'
 import { RoadMap } from '../RoadMap'
 import { useAuth } from '../auth'
 import { federalLabel, legKey, roadDetail, roadKm } from '../roads'
-import { uid, useData } from '../store'
+import { useData } from '../store'
 import { useRoadRoutes } from '../useRoutes'
-import type { ExpenseCategory, Trip, TripExpense, TripStatus } from '../types'
-import { Badge, ConfirmDialog, Drawer, Empty, ExpenseAmount } from '../ui'
+import type { Trip, TripStatus } from '../types'
+import { Badge, Drawer, Empty } from '../ui'
 
 export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
   const { state, saveTrip } = useData()
@@ -56,16 +53,12 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
       .map((trip) => {
         const vehicle = state.vehicles.find((item) => item.id === trip.vehicleId)
         const driver = state.drivers.find((item) => item.id === trip.driverId)
-        const tripExpenses = state.expenses.filter((expense) => expense.tripId === trip.id)
-        const expenses = sumExpenses(tripExpenses)
         const paid = sumAmounts(state.payments.filter((payment) => payment.tripId === trip.id))
         const debt = debtOf(trip, paid)
         return {
           trip,
           vehicle,
           driver,
-          expenses,
-          expenseCount: tripExpenses.length,
           paid,
           debt,
           overdue: isOverdue(trip, debt, today),
@@ -286,7 +279,6 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
                   onOpen={() => onOpen(selected.trip.id)}
                   onCopy={allowed ? () => beginCopy(selected.trip) : undefined}
                 />
-                <TripExpenses trip={selected.trip} total={selected.expenses} count={selected.expenseCount} />
               </>
             ) : (
               <p className="muted">Выберите рейс в списке.</p>
@@ -466,153 +458,6 @@ function TripCard({
         ) : null}
       </div>
     </>
-  )
-}
-
-function TripExpenses({ trip, total, count }: { trip: Trip; total: number; count: number }) {
-  const { state, saveExpense, deleteExpense } = useData()
-  const { can } = useAuth()
-  const canEdit = can('expenses')
-  const expenses = state.expenses
-    .filter((expense) => expense.tripId === trip.id)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
-  const [date, setDate] = useState(trip.date)
-  const [category, setCategory] = useState<ExpenseCategory>('salary')
-  const [amount, setAmount] = useState('')
-  const [comment, setComment] = useState('')
-  const [error, setError] = useState('')
-  const [pending, setPending] = useState<TripExpense | null>(null)
-  const amountRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    setDate(trip.date)
-    setAmount('')
-    setComment('')
-    setError('')
-  }, [trip.id, trip.date])
-
-  async function add(event: FormEvent) {
-    event.preventDefault()
-    const parsed = parseMoney(amount)
-    if (!date) {
-      setError('Укажите дату расхода.')
-      return
-    }
-    if (parsed === null || parsed <= 0) {
-      setError('Сумма расхода должна быть больше нуля.')
-      return
-    }
-    const saved = await saveExpense({
-      id: uid('e'),
-      tripId: trip.id,
-      date,
-      category,
-      amount: parsed,
-      comment: comment.trim(),
-    })
-    if (!saved) return
-    setAmount('')
-    setComment('')
-    setError('')
-    amountRef.current?.focus()
-  }
-
-  return (
-    <div className="trip-expenses">
-      <div className="section-head">
-        <h3>Расходы по рейсу</h3>
-        <span className="muted">{count === 0 ? 'Пока нет' : `${count} на ${money(total)}`}</span>
-      </div>
-      <p className="road-note">
-        Платон пишется в расходы только за федеральные дороги из перечня Правительства: их километры × тариф. С 1 марта 2026 года это 5,19 ₽/км. Ко всем расходам, кроме топлива, добавляется НДС 22%.
-      </p>
-      {expenses.length > 0 ? (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Дата</th>
-                <th>Статья</th>
-                <th className="num">Сумма</th>
-                <th>Комментарий</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {expenses.map((expense) => (
-                <tr key={expense.id}>
-                  <td>{dateRu(expense.date)}</td>
-                  <td>{expenseCategoryLabel[expense.category]}</td>
-                  <td className="num">
-                    <ExpenseAmount category={expense.category} amount={expense.amount} />
-                  </td>
-                  <td>{expense.comment || '—'}</td>
-                  <td className="row-actions">
-                    {canEdit ? (
-                      <button type="button" className="text-btn danger-text" onClick={() => setPending(expense)}>
-                        Удалить
-                      </button>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-      {canEdit ? (
-        <form className="trip-expense-form" onSubmit={(event) => void add(event)}>
-          <input type="date" value={date} aria-label="Дата расхода" onChange={(event) => setDate(event.target.value)} required />
-          <select
-            aria-label="Статья расхода"
-            value={category}
-            onChange={(event) => setCategory(event.target.value as ExpenseCategory)}
-          >
-            {expenseCategories.map((item) => (
-              <option key={item} value={item}>
-                {expenseCategoryLabel[item]}
-              </option>
-            ))}
-          </select>
-          <input
-            ref={amountRef}
-            inputMode="decimal"
-            value={amount}
-            aria-label="Сумма расхода"
-            placeholder={category === 'fuel' ? 'Сумма' : 'Сумма без НДС'}
-            onChange={(event) => setAmount(event.target.value)}
-          />
-          <input
-            value={comment}
-            aria-label="Комментарий к расходу"
-            placeholder={category === 'salary' ? 'Зарплата за рейс' : 'Комментарий'}
-            onChange={(event) => setComment(event.target.value)}
-          />
-          <button type="submit" className="btn small primary">
-            Добавить расход
-          </button>
-          <p className="hint">{expenseEntryHint(category, parseMoney(amount))}</p>
-          {error ? (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-          ) : null}
-        </form>
-      ) : (
-        <p className="hint">Добавлять расходы может тот, у кого есть это право.</p>
-      )}
-      {pending ? (
-        <ConfirmDialog
-          text={`Удалить ${expenseCategoryLabel[pending.category].toLowerCase()} ${money(expenseWithVat(pending.category, pending.amount))}?`}
-          confirmLabel="Удалить"
-          onNo={() => setPending(null)}
-          onYes={() => {
-            void deleteExpense(pending.id)
-            setPending(null)
-          }}
-        />
-      ) : null}
-    </div>
   )
 }
 

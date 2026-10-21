@@ -27,11 +27,9 @@ function rowNumber(rows: (string | number | null)[][], marker: string, index: nu
 const trips = section('trips')
 assert.equal(trips.section.rows.length, 6)
 assert.equal(rowNumber(trips.section.rows, 'Р-1034', 9), 86000)
-assert.equal(rowNumber(trips.section.rows, 'Р-1034', 10), 28748)
-assert.equal(rowNumber(trips.section.rows, 'Р-1034', 11), 20000)
-assert.equal(rowNumber(trips.section.rows, 'Р-1034', 12), 66000)
-assert.equal(rowNumber(trips.section.rows, 'Р-1034', 13), 57252)
-assert.deepEqual(trips.section.totals?.slice(9), [403000, 101736, 144000, 220000, 262264])
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 10), 20000)
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 11), 66000)
+assert.deepEqual(trips.section.totals?.slice(9), [403000, 144000, 220000])
 
 const expenses = section('expenses')
 assert.equal(expenses.section.rows.length, 12)
@@ -72,7 +70,7 @@ const worksheet = new TextDecoder().decode(files['xl/worksheets/sheet1.xml'])
 assert.match(shared, /Реестр рейсов/)
 assert.match(shared, /Р-1034/)
 assert.match(worksheet, /86000/)
-assert.match(worksheet, /57252/)
+assert.match(worksheet, /66000/)
 
 const fonts = {
   regular: readFileSync(new URL('../../public/fonts/Roboto-Regular.ttf', import.meta.url)),

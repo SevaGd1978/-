@@ -45,6 +45,7 @@ export interface Trip {
 
 export interface TripExpense {
   id: string
+  vehicleId: string
   tripId: string
   date: string
   category: ExpenseCategory

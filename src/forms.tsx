@@ -187,8 +187,8 @@ export function CopyTripDrawer({
     <Drawer title={`Копия ${source.number}`} onClose={onClose}>
       <p className="hint">
         Новый рейс по образцу {source.number}: маршрут, заказчик, груз, машина, водитель и ставка. Номер {draft.number},
-        дата сегодня, статус «Запланирован». Расходы и оплаты исходного рейса остаются на нём. Платон для копии
-        считается заново.
+        дата сегодня, статус «Запланирован». Оплаты исходного рейса остаются на нём. Расходы записываются на машину.
+        Платон для копии считается заново и попадает на ту же машину.
       </p>
       <TripForm
         initial={draft}
@@ -203,31 +203,29 @@ export function CopyTripDrawer({
 
 export function ExpenseForm({
   initial,
-  fixedTripId,
   onSubmit,
   onCancel,
   onDelete,
 }: {
   initial?: TripExpense
-  fixedTripId?: string
   onSubmit: (expense: TripExpense) => void
   onCancel: () => void
   onDelete?: () => void
 }) {
   const { state } = useData()
-  const [tripId, setTripId] = useState(initial?.tripId ?? fixedTripId ?? '')
+  const [vehicleId, setVehicleId] = useState(initial?.vehicleId ?? '')
   const [date, setDate] = useState(initial?.date ?? todayIso())
   const [category, setCategory] = useState(initial?.category ?? 'fuel')
   const [amount, setAmount] = useState(initial ? String(initial.amount) : '')
   const [comment, setComment] = useState(initial?.comment ?? '')
   const [error, setError] = useState('')
-  const lockedTrip = fixedTripId ? state.trips.find((trip) => trip.id === fixedTripId) : undefined
+  const vehicles = [...state.vehicles].sort((a, b) => a.plate.localeCompare(b.plate, 'ru'))
 
   function submit(event: FormEvent) {
     event.preventDefault()
     const parsed = parseMoney(amount)
-    if (!tripId) {
-      setError('Выберите рейс.')
+    if (!vehicleId) {
+      setError('Выберите машину из парка.')
       return
     }
     if (!date) {
@@ -240,7 +238,8 @@ export function ExpenseForm({
     }
     onSubmit({
       id: initial?.id ?? uid('e'),
-      tripId,
+      vehicleId,
+      tripId: initial?.tripId ?? '',
       date,
       category,
       amount: parsed,
@@ -250,24 +249,16 @@ export function ExpenseForm({
 
   return (
     <form className="form-grid" onSubmit={submit}>
-      {lockedTrip ? (
-        <Field label="Рейс" wide>
-          <input value={`${lockedTrip.number} · ${lockedTrip.from} → ${lockedTrip.to}`} readOnly />
-        </Field>
-      ) : (
-        <Field label="Рейс" wide>
-          <select value={tripId} onChange={(event) => setTripId(event.target.value)} autoFocus>
-            <option value="">Выберите рейс</option>
-            {[...state.trips]
-              .sort((a, b) => b.date.localeCompare(a.date))
-              .map((trip) => (
-                <option key={trip.id} value={trip.id}>
-                  {trip.number} · {trip.from} → {trip.to}
-                </option>
-              ))}
-          </select>
-        </Field>
-      )}
+      <Field label="Машина" wide>
+        <select value={vehicleId} onChange={(event) => setVehicleId(event.target.value)} autoFocus>
+          <option value="">Выберите машину</option>
+          {vehicles.map((vehicle) => (
+            <option key={vehicle.id} value={vehicle.id}>
+              {vehicle.plate} · {vehicle.model}
+            </option>
+          ))}
+        </select>
+      </Field>
       <Field label="Дата">
         <input type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
       </Field>
@@ -281,7 +272,7 @@ export function ExpenseForm({
         </select>
       </Field>
       <Field label={category === 'fuel' ? 'Сумма, ₽' : 'Сумма без НДС, ₽'}>
-        <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} autoFocus={Boolean(lockedTrip)} />
+        <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
       </Field>
       <p className="hint wide">{expenseEntryHint(category, parseMoney(amount))}</p>
       <Field label="Комментарий" wide>
