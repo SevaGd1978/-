@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { parseTrip } from './records.ts'
+import { parseExpense, parseRepair, parseTrip } from './records.ts'
 
 const base = {
   id: 't_copy',
@@ -26,5 +26,31 @@ assert.equal(dated?.payDue, '2026-11-01')
 
 assert.equal(parseTrip({ ...base, payDue: 'завтра' }), null)
 assert.equal(parseTrip({ ...base, id: '' }), null)
+
+const toll = parseExpense({
+  id: 'e_toll',
+  vehicleId: 'v1',
+  date: '2026-10-21',
+  category: 'toll',
+  amount: 100,
+  comment: 'М-12',
+})
+assert.equal(toll?.vehicleId, '')
+assert.equal(parseExpense({ ...toll, id: 'e_fuel', category: 'fuel', vehicleId: '' }), null)
+
+const parts = parseRepair({
+  id: 'r_parts',
+  vehicleId: 'v4',
+  date: '2026-10-21',
+  kind: 'parts',
+  description: 'Фильтр',
+  partsCost: 800,
+  laborCost: 0,
+  status: 'queued',
+  odometer: 1200,
+})
+assert.equal(parts?.vehicleId, '')
+assert.equal(parts?.odometer, null)
+assert.equal(parseRepair({ ...parts, id: 'r_fix', kind: 'repair', vehicleId: '' }), null)
 
 console.log('records tests ok')

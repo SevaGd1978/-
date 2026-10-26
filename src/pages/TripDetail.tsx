@@ -152,7 +152,8 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
         </article>
       </section>
       <p className="muted">
-        Срок оплаты: {trip.payDue ? dateRu(trip.payDue) : 'не задан'}. Расходы ведутся по машине.
+        Срок оплаты: {trip.payDue ? dateRu(trip.payDue) : 'не задан'}. Топливо и суточные ведутся по машине. Платон и
+        платные дороги записываются отдельно.
       </p>
 
       <section className="card">

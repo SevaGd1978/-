@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { legKey, type RoadLeg } from './roads'
-import { useData } from './store'
 
 export function useRoadRoutes(pairs: { from: string; to: string }[]) {
-  const { reload } = useData()
   const signature = useMemo(() => {
     const unique = new Set(pairs.map((pair) => legKey(pair.from, pair.to)))
     return [...unique].sort().join('|')
@@ -30,7 +28,7 @@ export function useRoadRoutes(pairs: { from: string; to: string }[]) {
     })
       .then(async (response) => {
         if (!response.ok) return null
-        return (await response.json()) as { routes?: RoadLeg[]; updated?: boolean }
+        return (await response.json()) as { routes?: RoadLeg[] }
       })
       .then((body) => {
         if (stop) return
@@ -38,7 +36,6 @@ export function useRoadRoutes(pairs: { from: string; to: string }[]) {
         for (const leg of body?.routes ?? []) next[legKey(leg.from, leg.to)] = leg
         setRoutes(next)
         setReady(true)
-        if (body?.updated) void reload()
       })
       .catch(() => {
         if (!stop) setReady(true)
@@ -46,7 +43,7 @@ export function useRoadRoutes(pairs: { from: string; to: string }[]) {
     return () => {
       stop = true
     }
-  }, [signature, reload])
+  }, [signature])
 
   return { routes, ready }
 }

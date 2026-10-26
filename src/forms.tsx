@@ -5,11 +5,13 @@ import {
   expenseCategories,
   expenseCategoryLabel,
   expenseEntryHint,
+  expenseSkipsVehicle,
   money,
   payMethodLabel,
   payMethods,
   repairKindLabel,
   repairKinds,
+  repairSkipsVehicle,
   repairStatusLabel,
   repairStatuses,
   parkStatuses,
@@ -187,8 +189,8 @@ export function CopyTripDrawer({
     <Drawer title={`Копия ${source.number}`} onClose={onClose}>
       <p className="hint">
         Новый рейс по образцу {source.number}: маршрут, заказчик, груз, машина, водитель и ставка. Номер {draft.number},
-        дата сегодня, статус «Запланирован». Оплаты исходного рейса остаются на нём. Расходы записываются на машину.
-        Платон для копии считается заново и попадает на ту же машину.
+        дата сегодня, статус «Запланирован». Оплаты исходного рейса остаются на нём. Топливо и суточные ведутся по
+        машине. Платон и платные дороги записываются отдельно, без машины.
       </p>
       <TripForm
         initial={draft}
@@ -220,11 +222,12 @@ export function ExpenseForm({
   const [comment, setComment] = useState(initial?.comment ?? '')
   const [error, setError] = useState('')
   const vehicles = [...state.vehicles].sort((a, b) => a.plate.localeCompare(b.plate, 'ru'))
+  const shared = expenseSkipsVehicle(category)
 
   function submit(event: FormEvent) {
     event.preventDefault()
     const parsed = parseMoney(amount)
-    if (!vehicleId) {
+    if (!shared && !vehicleId) {
       setError('Выберите машину из парка.')
       return
     }
@@ -238,7 +241,7 @@ export function ExpenseForm({
     }
     onSubmit({
       id: initial?.id ?? uid('e'),
-      vehicleId,
+      vehicleId: shared ? '' : vehicleId,
       tripId: initial?.tripId ?? '',
       date,
       category,
@@ -249,16 +252,20 @@ export function ExpenseForm({
 
   return (
     <form className="form-grid" onSubmit={submit}>
-      <Field label="Машина" wide>
-        <select value={vehicleId} onChange={(event) => setVehicleId(event.target.value)} autoFocus>
-          <option value="">Выберите машину</option>
-          {vehicles.map((vehicle) => (
-            <option key={vehicle.id} value={vehicle.id}>
-              {vehicle.plate} · {vehicle.model}
-            </option>
-          ))}
-        </select>
-      </Field>
+      {shared ? (
+        <p className="hint wide">Платон и платные дороги записываются отдельно, без машины.</p>
+      ) : (
+        <Field label="Машина" wide>
+          <select value={vehicleId} onChange={(event) => setVehicleId(event.target.value)} autoFocus>
+            <option value="">Выберите машину</option>
+            {vehicles.map((vehicle) => (
+              <option key={vehicle.id} value={vehicle.id}>
+                {vehicle.plate} · {vehicle.model}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
       <Field label="Дата">
         <input type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
       </Field>
@@ -311,13 +318,14 @@ export function RepairForm({
   const laborValue = parseMoney(labor)
   const preview =
     (parts.trim() ? partsValue ?? 0 : 0) + (labor.trim() ? laborValue ?? 0 : 0)
+  const shared = repairSkipsVehicle(kind)
 
   function submit(event: FormEvent) {
     event.preventDefault()
     const parsedParts = parts.trim() ? parseMoney(parts) : 0
     const parsedLabor = labor.trim() ? parseMoney(labor) : 0
     const parsedOdometer = parseOdometer(odometer)
-    if (!vehicleId) {
+    if (!shared && !vehicleId) {
       setError('Выберите машину.')
       return
     }
@@ -333,35 +341,39 @@ export function RepairForm({
       setError('Сумма запчастей и работы должна быть больше нуля.')
       return
     }
-    if (odometer.trim() && parsedOdometer === null) {
+    if (!shared && odometer.trim() && parsedOdometer === null) {
       setError('Пробег укажите целым числом километров.')
       return
     }
     onSubmit({
       id: initial?.id ?? uid('r'),
-      vehicleId,
+      vehicleId: shared ? '' : vehicleId,
       date,
       kind,
       description: description.trim(),
       partsCost: parsedParts,
       laborCost: parsedLabor,
       status,
-      odometer: parsedOdometer,
+      odometer: shared ? null : parsedOdometer,
     })
   }
 
   return (
     <form className="form-grid" onSubmit={submit}>
-      <Field label="Машина" wide>
-        <select value={vehicleId} onChange={(event) => setVehicleId(event.target.value)} autoFocus>
-          <option value="">Выберите машину</option>
-          {state.vehicles.map((vehicle) => (
-            <option key={vehicle.id} value={vehicle.id}>
-              {vehicleOption(vehicle, state.trips)}
-            </option>
-          ))}
-        </select>
-      </Field>
+      {shared ? (
+        <p className="hint wide">Запчасти записываются без машины.</p>
+      ) : (
+        <Field label="Машина" wide>
+          <select value={vehicleId} onChange={(event) => setVehicleId(event.target.value)} autoFocus>
+            <option value="">Выберите машину</option>
+            {state.vehicles.map((vehicle) => (
+              <option key={vehicle.id} value={vehicle.id}>
+                {vehicleOption(vehicle, state.trips)}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
       <Field label="Дата">
         <input type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
       </Field>
@@ -383,9 +395,11 @@ export function RepairForm({
           ))}
         </select>
       </Field>
-      <Field label="Пробег, км">
-        <input inputMode="numeric" value={odometer} onChange={(event) => setOdometer(event.target.value)} placeholder="Необязательно" />
-      </Field>
+      {shared ? null : (
+        <Field label="Пробег, км">
+          <input inputMode="numeric" value={odometer} onChange={(event) => setOdometer(event.target.value)} placeholder="Необязательно" />
+        </Field>
+      )}
       <Field label="Запчасти, ₽">
         <input inputMode="decimal" value={parts} onChange={(event) => setParts(event.target.value)} />
       </Field>

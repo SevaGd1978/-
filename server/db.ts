@@ -101,6 +101,7 @@ export function openDatabase(file: string): Sql {
       db.prepare(`INSERT INTO meta (key, value) VALUES ('seeded', '1')`).run()
     })
   }
+  unbindSharedCosts(db)
   return db
 }
 
@@ -203,7 +204,9 @@ export function deleteTrip(db: Sql, id: string): DbResult {
 
 export function saveExpense(db: Sql, expense: TripExpense): DbResult {
   return transaction(db, () => {
-    if (!count(db, `SELECT COUNT(*) AS n FROM vehicles WHERE id = ?`, expense.vehicleId)) {
+    const shared = expense.category === 'toll' || expense.category === 'platon'
+    const vehicleId = shared ? '' : expense.vehicleId
+    if (!shared && !count(db, `SELECT COUNT(*) AS n FROM vehicles WHERE id = ?`, vehicleId)) {
       return fail(400, 'Выберите машину из парка')
     }
     const position = nextPosition(db, 'expenses', expense.id)
@@ -216,7 +219,7 @@ export function saveExpense(db: Sql, expense: TripExpense): DbResult {
     ).run(
       expense.id,
       expense.tripId,
-      expense.vehicleId,
+      vehicleId,
       expense.date,
       expense.category,
       expense.amount,
@@ -236,7 +239,10 @@ export function deleteExpense(db: Sql, id: string): DbResult {
 
 export function saveRepair(db: Sql, job: RepairJob): DbResult {
   return transaction(db, () => {
-    if (!count(db, `SELECT COUNT(*) AS n FROM vehicles WHERE id = ?`, job.vehicleId)) {
+    const shared = job.kind === 'parts'
+    const vehicleId = shared ? '' : job.vehicleId
+    const odometer = shared ? null : job.odometer
+    if (!shared && !count(db, `SELECT COUNT(*) AS n FROM vehicles WHERE id = ?`, vehicleId)) {
       return fail(400, 'Заявка привязана к несуществующей машине')
     }
     const position = nextPosition(db, 'repairs', job.id)
@@ -250,14 +256,14 @@ export function saveRepair(db: Sql, job: RepairJob): DbResult {
          status = excluded.status, odometer = excluded.odometer`,
     ).run(
       job.id,
-      job.vehicleId,
+      vehicleId,
       job.date,
       job.kind,
       job.description,
       job.partsCost,
       job.laborCost,
       job.status,
-      job.odometer,
+      odometer,
       position,
     )
     return done(db)
@@ -532,8 +538,28 @@ function ensureExpenseVehicle(db: Sql) {
      SET vehicle_id = (SELECT vehicle_id FROM trips WHERE trips.id = expenses.trip_id)
      WHERE vehicle_id = ''
        AND trip_id != ''
+       AND category NOT IN ('toll', 'platon')
        AND EXISTS (SELECT 1 FROM trips WHERE trips.id = expenses.trip_id)`,
   )
+}
+
+function unbindSharedCosts(db: Sql) {
+  const removed = db.prepare(`DELETE FROM expenses WHERE id LIKE 'platon\\_%' ESCAPE '\\'`).run()
+  const expenses = db
+    .prepare(`UPDATE expenses SET vehicle_id = '' WHERE category IN ('toll', 'platon') AND vehicle_id != ''`)
+    .run()
+  const repairs = db
+    .prepare(
+      `UPDATE repairs SET vehicle_id = '', odometer = NULL WHERE kind = 'parts' AND (vehicle_id != '' OR odometer IS NOT NULL)`,
+    )
+    .run()
+  const changed = Number(removed.changes) + Number(expenses.changes) + Number(repairs.changes)
+  if (!changed) return
+  const next = readVersion(db) + 1
+  db.prepare(
+    `INSERT INTO meta (key, value) VALUES ('version', ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+  ).run(String(next))
 }
 
 function readVersion(db: Sql) {

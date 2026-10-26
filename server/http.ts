@@ -32,7 +32,6 @@ import {
   saveVehicle,
   type DbResult,
 } from './db.ts'
-import { syncPlaton } from './platon.ts'
 import { checkGibddFines, issueCaptcha } from './gibdd.ts'
 import { cityCatalog, lookupRoutes } from './roads.ts'
 import { splitPlate, stsLooksValid } from '../src/gibdd.ts'
@@ -137,8 +136,7 @@ async function handleApi(db: DatabaseSync, req: IncomingMessage, res: ServerResp
       const pairs = parseRoutePairs(body)
       if (!pairs) return sendJson(res, 400, { error: 'Укажите города маршрута' })
       const routes = await lookupRoutes(db, pairs)
-      const updated = syncPlaton(db)
-      sendJson(res, 200, { routes, updated })
+      sendJson(res, 200, { routes })
       return
     }
     if (method === 'GET' && pathname === '/api/gibdd/captcha') {
@@ -170,8 +168,7 @@ async function handleApi(db: DatabaseSync, req: IncomingMessage, res: ServerResp
       if (!actor.rights.includes(right)) return forbid(res)
       const body = await readJson(req)
       const result = writeOne(db, parts[1], body)
-      if (result.ok && parts[1] === 'trips') syncPlaton(db)
-      sendResult(res, result.ok ? { ok: true, ...readResult(db) } : result)
+      sendResult(res, result)
       return
     }
     if (parts.length === 3 && method === 'DELETE') {

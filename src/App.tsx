@@ -35,7 +35,7 @@ const KICKER: Record<Screen['name'], string> = {
   dashboard: 'Диспетчерская',
   trips: 'Маршруты',
   trip: 'Маршруты',
-  expenses: 'Затраты машин',
+  expenses: 'Затраты',
   repair: 'Мастерская',
   payments: 'Деньги заказчиков',
   fines: 'Госавтоинспекция',

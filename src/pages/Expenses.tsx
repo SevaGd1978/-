@@ -35,7 +35,9 @@ export function ExpensesPage() {
   const rows = [...state.expenses]
     .filter((expense) => inPeriod(expense.date, period))
     .filter((expense) => (category === 'all' ? true : expense.category === category))
-    .filter((expense) => (vehicleId === 'all' ? true : expense.vehicleId === vehicleId))
+    .filter((expense) =>
+      vehicleId === 'all' ? true : vehicleId === 'none' ? expense.vehicleId === '' : expense.vehicleId === vehicleId,
+    )
     .sort((a, b) => b.date.localeCompare(a.date))
 
   return (
@@ -59,6 +61,7 @@ export function ExpensesPage() {
         </select>
         <select aria-label="Машина" value={vehicleId} onChange={(event) => setVehicleId(event.target.value)}>
           <option value="all">Все машины</option>
+          <option value="none">Без машины</option>
           {vehicles.map((vehicle) => (
             <option key={vehicle.id} value={vehicle.id}>
               {vehicle.plate} · {vehicle.model}
@@ -73,12 +76,13 @@ export function ExpensesPage() {
       </div>
       {allowed ? null : <p className="hint">Просмотр. Менять расходы может тот, у кого есть это право.</p>}
       <p className="muted">
-        Итого по фильтру: {money(sumExpenses(rows))}. Кроме топлива, к сумме добавлен НДС {VAT_PERCENT}%. Расход
-        записывается на машину и остаётся, если рейс удалить.
+        Итого по фильтру: {money(sumExpenses(rows))}. Кроме топлива, к сумме добавлен НДС {VAT_PERCENT}%. Топливо,
+        суточные и погрузка записываются на машину. Платон и платные дороги идут отдельно, без машины, и остаются, если
+        рейс удалить.
       </p>
       <section className="card">
         {rows.length === 0 ? (
-          <Empty title="Расходов нет" text="Добавьте топливо, дороги, суточные или погрузку на машину." />
+          <Empty title="Расходов нет" text="Топливо и суточные — на машину. Платон и платные дороги — без машины." />
         ) : (
           <div className="table-wrap">
             <table>
@@ -98,7 +102,7 @@ export function ExpensesPage() {
                   return (
                     <tr key={expense.id}>
                       <td>{dateRu(expense.date)}</td>
-                      <td>{vehicle ? vehicle.plate : '—'}</td>
+                      <td>{expense.vehicleId ? (vehicle ? vehicle.plate : '—') : 'Без машины'}</td>
                       <td>{expenseCategoryLabel[expense.category]}</td>
                       <td>{expense.comment || '—'}</td>
                       <td className="num">
@@ -134,7 +138,7 @@ export function ExpensesPage() {
         )}
       </section>
       {editor ? (
-        <Drawer title={editor === 'new' ? 'Расход по машине' : 'Изменить расход'} onClose={() => setEditor(null)}>
+        <Drawer title={editor === 'new' ? 'Расход' : 'Изменить расход'} onClose={() => setEditor(null)}>
           <ExpenseForm
             initial={editor === 'new' ? undefined : editor}
             onCancel={() => setEditor(null)}

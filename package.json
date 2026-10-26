@@ -9,7 +9,7 @@
     "start": "node --experimental-sqlite --experimental-strip-types server/index.ts",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "tsx src/calc.test.ts && tsx src/cities.test.ts && tsx src/customers.test.ts && tsx src/fleetStatus.test.ts && tsx src/federalRoads.test.ts && tsx src/platon.test.ts && tsx src/reports/build.test.ts && tsx src/records.test.ts && tsx src/gibdd.test.ts && node --experimental-sqlite --experimental-strip-types server/db.test.ts && node --experimental-sqlite --experimental-strip-types server/platon.test.ts && node --experimental-sqlite --experimental-strip-types server/auth.test.ts"
+    "test": "tsx src/calc.test.ts && tsx src/cities.test.ts && tsx src/customers.test.ts && tsx src/fleetStatus.test.ts && tsx src/federalRoads.test.ts && tsx src/reports/build.test.ts && tsx src/records.test.ts && tsx src/gibdd.test.ts && node --experimental-sqlite --experimental-strip-types server/db.test.ts && node --experimental-sqlite --experimental-strip-types server/platon.test.ts && node --experimental-sqlite --experimental-strip-types server/auth.test.ts"
   },
   "dependencies": {
     "jspdf": "^4.2.1",

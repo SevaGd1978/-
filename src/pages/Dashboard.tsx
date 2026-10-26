@@ -117,9 +117,9 @@ export function Dashboard({ onOpenTrip }: { onOpenTrip: (id: string) => void }) 
           <em>Оплаты за рейсы</em>
         </article>
         <article className="kpi">
-          <span>Расходы машин</span>
+          <span>Расходы</span>
           <strong className="num">{money(tripSpend)}</strong>
-          <em>Топливо, дороги, суточные</em>
+          <em>Топливо по машинам, Платон и дороги отдельно</em>
         </article>
         <article className="kpi">
           <span>Ремзона</span>
@@ -129,7 +129,7 @@ export function Dashboard({ onOpenTrip }: { onOpenTrip: (id: string) => void }) 
         <article className="kpi">
           <span>Результат</span>
           <strong className={result < 0 ? 'num neg' : 'num pos'}>{money(result)}</strong>
-          <em>Получено минус расходы машин и ремзона</em>
+          <em>Получено минус расходы и ремзона</em>
         </article>
       </section>
 
@@ -178,7 +178,7 @@ export function Dashboard({ onOpenTrip }: { onOpenTrip: (id: string) => void }) 
 
           <section className="card">
             <div className="section-head">
-              <h2>Расходы машин</h2>
+              <h2>Расходы</h2>
               <span className="muted">кроме топлива, с НДС {VAT_PERCENT}%</span>
             </div>
             {byCategory.length === 0 ? (

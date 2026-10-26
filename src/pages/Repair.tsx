@@ -25,7 +25,7 @@ export function RepairPage() {
 
   const rows = [...state.repairs]
     .filter((job) => inPeriod(job.date, period))
-    .filter((job) => (vehicleId === 'all' ? true : job.vehicleId === vehicleId))
+    .filter((job) => (vehicleId === 'all' ? true : vehicleId === 'none' ? job.vehicleId === '' : job.vehicleId === vehicleId))
     .filter((job) => (status === 'all' ? true : job.status === status))
     .sort((a, b) => b.date.localeCompare(a.date))
   const total = sumAmounts(rows.map((job) => ({ amount: repairCost(job) })))
@@ -56,6 +56,7 @@ export function RepairPage() {
         </select>
         <select aria-label="Машина" value={vehicleId} onChange={(event) => setVehicleId(event.target.value)}>
           <option value="all">Все машины</option>
+          <option value="none">Без машины</option>
           {state.vehicles.map((vehicle) => (
             <option key={vehicle.id} value={vehicle.id}>
               {vehicle.plate}
@@ -74,10 +75,14 @@ export function RepairPage() {
           </button>
         ) : null}
       </div>
-      {allowed ? null : <p className="hint">Просмотр. Менять ремзону может тот, у кого есть это право.</p>}
+      {allowed ? (
+        <p className="hint">Запчасти можно записать без машины. Остальные заявки остаются на автомобиле.</p>
+      ) : (
+        <p className="hint">Просмотр. Менять ремзону может тот, у кого есть это право.</p>
+      )}
       <section className="card">
         {rows.length === 0 ? (
-          <Empty title="Заявок нет" text="Ремонт, ТО, шины и запчасти ведутся отдельно от рейсов." />
+          <Empty title="Заявок нет" text="Ремонт, ТО и шины ведутся по машине. Запчасти можно записать без машины." />
         ) : (
           <div className="table-wrap">
             <table>
@@ -97,7 +102,7 @@ export function RepairPage() {
                   return (
                     <tr key={job.id}>
                       <td>{dateRu(job.date)}</td>
-                      <td>{vehicle ? `${vehicle.plate}` : '—'}</td>
+                      <td>{job.vehicleId ? (vehicle ? vehicle.plate : '—') : 'Без машины'}</td>
                       <td>
                         {repairKindLabel[job.kind]} · {job.description}
                         <small className="muted">

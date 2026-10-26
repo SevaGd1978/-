@@ -43,6 +43,11 @@ function id(value: unknown): string | null {
   return value
 }
 
+function optionalId(value: unknown): string | null {
+  if (value == null || value === '') return ''
+  return id(value)
+}
+
 function day(value: unknown): string | null {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
   return value
@@ -168,7 +173,7 @@ export function parseExpense(value: unknown): TripExpense | null {
   const tripId = row.tripId == null || row.tripId === '' ? '' : id(row.tripId)
   const parsed = {
     id: id(row.id),
-    vehicleId: id(row.vehicleId),
+    vehicleId: optionalId(row.vehicleId),
     tripId,
     date: day(row.date),
     category:
@@ -180,7 +185,7 @@ export function parseExpense(value: unknown): TripExpense | null {
   }
   if (
     !parsed.id ||
-    !parsed.vehicleId ||
+    parsed.vehicleId == null ||
     parsed.tripId == null ||
     !parsed.date ||
     !parsed.category ||
@@ -189,9 +194,11 @@ export function parseExpense(value: unknown): TripExpense | null {
   ) {
     return null
   }
+  const shared = parsed.category === 'toll' || parsed.category === 'platon'
+  if (!shared && !parsed.vehicleId) return null
   return {
     id: parsed.id,
-    vehicleId: parsed.vehicleId,
+    vehicleId: shared ? '' : parsed.vehicleId,
     tripId: parsed.tripId,
     date: parsed.date,
     category: parsed.category,
@@ -214,7 +221,7 @@ export function parseRepair(value: unknown): RepairJob | null {
   }
   const parsed = {
     id: id(row.id),
-    vehicleId: id(row.vehicleId),
+    vehicleId: optionalId(row.vehicleId),
     date: day(row.date),
     kind: typeof kind === 'string' && REPAIR_KIND.has(kind as RepairKind) ? (kind as RepairKind) : null,
     description: text(row.description, 300),
@@ -225,7 +232,7 @@ export function parseRepair(value: unknown): RepairJob | null {
   }
   if (
     !parsed.id ||
-    !parsed.vehicleId ||
+    parsed.vehicleId == null ||
     !parsed.date ||
     !parsed.kind ||
     !parsed.description ||
@@ -235,16 +242,18 @@ export function parseRepair(value: unknown): RepairJob | null {
   ) {
     return null
   }
+  const shared = parsed.kind === 'parts'
+  if (!shared && !parsed.vehicleId) return null
   return {
     id: parsed.id,
-    vehicleId: parsed.vehicleId,
+    vehicleId: shared ? '' : parsed.vehicleId,
     date: parsed.date,
     kind: parsed.kind,
     description: parsed.description,
     partsCost: parsed.partsCost,
     laborCost: parsed.laborCost,
     status: parsed.status,
-    odometer: parsed.odometer,
+    odometer: shared ? null : parsed.odometer,
   }
 }
 

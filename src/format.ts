@@ -21,6 +21,14 @@ export const expenseCategoryLabel: Record<ExpenseCategory, string> = {
   other: 'Прочее',
 }
 
+export function expenseSkipsVehicle(category: string) {
+  return category === 'toll' || category === 'platon'
+}
+
+export function repairSkipsVehicle(kind: string) {
+  return kind === 'parts'
+}
+
 export const repairKindLabel: Record<RepairKind, string> = {
   maintenance: 'ТО',
   repair: 'Ремонт',
