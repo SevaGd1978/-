@@ -568,26 +568,8 @@ input[readonly] { background: #f6f1ea; }
 .trip-sheet tbody tr:hover td { background: #f6f1ea; }
 .trip-sheet tbody tr[aria-selected="true"] td,
 .trip-sheet tbody tr[aria-selected="true"]:hover td { background: var(--warn-bg); }
-.trip-preview {
-  position: fixed;
-  z-index: 35;
-  max-height: min(560px, calc(100vh - 16px));
-  overflow: auto;
-  background: var(--card);
-  border: 1px solid var(--line);
-  box-shadow: 0 16px 40px rgba(40, 24, 10, 0.18);
-  padding: 12px 14px 14px;
-  display: grid;
-  align-content: start;
-  gap: 10px;
-}
-.trip-preview .trip-facts { gap: 6px; }
-.trip-preview .section-head { position: sticky; top: 0; background: var(--card); z-index: 1; }
-.trip-preview .btn { position: sticky; bottom: 0; width: 100%; background: var(--card); }
 .trip-actions { display: flex; gap: 8px; }
 .trip-actions .btn { flex: 1 1 0; }
-.trip-preview .trip-actions { position: sticky; bottom: 0; background: var(--card); z-index: 1; }
-.trip-preview .trip-actions .btn { position: static; width: auto; }
 .trip-sheet .is-cancelled { opacity: 0.72; }
 .trip-sheet .is-overdue { color: var(--bad); font-weight: 700; }
 .trip-side .btn { width: 100%; }
