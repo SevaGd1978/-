@@ -547,6 +547,7 @@ input[readonly] { background: #f6f1ea; }
   .trip-sheet .badge { font-size: 11px; padding: 0 3px; }
 }
 .pay-col { width: 22px; text-align: center; }
+.trip-sheet .pay-when { min-width: 6.8em; font-variant-numeric: tabular-nums; }
 .sr {
   position: absolute;
   width: 1px;

@@ -45,14 +45,17 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
       .map((trip) => {
         const vehicle = state.vehicles.find((item) => item.id === trip.vehicleId)
         const driver = state.drivers.find((item) => item.id === trip.driverId)
-        const paid = sumAmounts(state.payments.filter((payment) => payment.tripId === trip.id))
+        const payments = state.payments.filter((payment) => payment.tripId === trip.id)
+        const paid = sumAmounts(payments)
         const debt = debtOf(trip, paid)
+        const paidOn = payments.reduce((latest, payment) => (payment.date > latest ? payment.date : latest), '')
         return {
           trip,
           vehicle,
           driver,
           paid,
           debt,
+          paidOn,
           overdue: isOverdue(trip, debt, today),
         }
       })
@@ -136,6 +139,7 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
                       <span className="sr">Оплата</span>
                     </th>
                     <th>Дата</th>
+                    <th>Дата оплаты</th>
                     <th>Номер</th>
                     <th>Маршрут</th>
                     <th>Машина</th>
@@ -146,7 +150,7 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
                     <th className="num">Сумма</th>
                     <th className="num">Оплачено</th>
                     <th className="num">% оплаты</th>
-                    <th>Дата оплаты</th>
+                    <th>Срок</th>
                     <th className="num">К оплате</th>
                   </tr>
                 </thead>
@@ -165,6 +169,9 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
                           <PayDot status={row.trip.status} rate={row.trip.rate} paid={row.paid} />
                         </td>
                         <td>{dateRu(row.trip.date)}</td>
+                        <td className="pay-when" title={row.paidOn ? 'Дата последнего поступления' : 'Оплат ещё нет'}>
+                          {row.paidOn ? dateRu(row.paidOn) : '—'}
+                        </td>
                         <td>
                           <button
                             type="button"
