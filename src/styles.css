@@ -223,6 +223,12 @@ h2 { font-size: 18px; }
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+button.cost-card {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+button.cost-card:hover { border-color: var(--ink); }
 .kpi strong { font-size: 28px; font-weight: 560; }
 .kpi em { font-style: normal; color: var(--muted); font-size: 13px; }
 .kpi-accent { background: #2a211c; color: #f6f1ea; border-color: #2a211c; }

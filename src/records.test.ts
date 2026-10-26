@@ -37,6 +37,16 @@ const toll = parseExpense({
 })
 assert.equal(toll?.vehicleId, '')
 assert.equal(parseExpense({ ...toll, id: 'e_fuel', category: 'fuel', vehicleId: '' }), null)
+const workshop = parseExpense({
+  id: 'e_shop',
+  vehicleId: 'v2',
+  date: '2026-10-21',
+  category: 'workshop',
+  amount: 900,
+  comment: '',
+})
+assert.equal(workshop?.vehicleId, '')
+assert.equal(workshop?.category, 'workshop')
 
 const parts = parseRepair({
   id: 'r_parts',

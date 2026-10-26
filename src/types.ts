@@ -1,6 +1,6 @@
 export type TripStatus = 'planned' | 'loading' | 'in_transit' | 'delivered' | 'closed' | 'cancelled'
 
-export type ExpenseCategory = 'fuel' | 'toll' | 'platon' | 'driver' | 'salary' | 'loading' | 'parking' | 'other'
+export type ExpenseCategory = 'fuel' | 'toll' | 'platon' | 'workshop' | 'driver' | 'salary' | 'loading' | 'parking' | 'other'
 
 export type RepairKind = 'maintenance' | 'repair' | 'tires' | 'parts' | 'body'
 

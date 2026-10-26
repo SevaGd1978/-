@@ -5,10 +5,13 @@ import {
   dateRu,
   expenseCategories,
   expenseCategoryLabel,
+  expenseSkipsVehicle,
   money,
   periodTitle,
+  sharedExpenseCategories,
+  type SharedExpenseCategory,
 } from '../format'
-import { ExpenseForm } from '../forms'
+import { ExpenseForm, SharedExpenseForm } from '../forms'
 import { useAuth } from '../auth'
 import { useData } from '../store'
 import type { ExpenseCategory, TripExpense } from '../types'
@@ -21,7 +24,9 @@ export function ExpensesPage() {
   const [period, setPeriod] = useState(currentPeriod())
   const [category, setCategory] = useState<ExpenseCategory | 'all'>('all')
   const [vehicleId, setVehicleId] = useState('all')
-  const [editor, setEditor] = useState<TripExpense | 'new' | null>(null)
+  const [editor, setEditor] = useState<
+    { mode: 'vehicle'; expense?: TripExpense } | { mode: 'shared'; category: SharedExpenseCategory; expense?: TripExpense } | null
+  >(null)
   const [confirm, setConfirm] = useState<{ text: string; run: () => void } | null>(null)
 
   const periods = useMemo(() => {
@@ -40,8 +45,37 @@ export function ExpensesPage() {
     )
     .sort((a, b) => b.date.localeCompare(a.date))
 
+  function openExpense(expense: TripExpense) {
+    if (expenseSkipsVehicle(expense.category)) {
+      setEditor({ mode: 'shared', category: expense.category as SharedExpenseCategory, expense })
+      return
+    }
+    setEditor({ mode: 'vehicle', expense })
+  }
+
   return (
     <div className="stack">
+      <section className="kpi-grid" aria-label="Расходы без машины">
+        {sharedExpenseCategories.map((item) => {
+          const matched = state.expenses.filter((expense) => inPeriod(expense.date, period) && expense.category === item)
+          const card = (
+            <>
+              <span>{expenseCategoryLabel[item]}</span>
+              <strong className="num">{money(sumExpenses(matched))}</strong>
+              <em>Дата, категория и сумма</em>
+            </>
+          )
+          return allowed ? (
+            <button key={item} type="button" className="kpi cost-card" onClick={() => setEditor({ mode: 'shared', category: item })}>
+              {card}
+            </button>
+          ) : (
+            <article key={item} className="kpi">
+              {card}
+            </article>
+          )
+        })}
+      </section>
       <div className="toolbar">
         <select aria-label="Период" value={period} onChange={(event) => setPeriod(event.target.value)}>
           <option value="all">Всё время</option>
@@ -69,16 +103,16 @@ export function ExpensesPage() {
           ))}
         </select>
         {allowed ? (
-          <button type="button" className="btn primary" onClick={() => setEditor('new')}>
+          <button type="button" className="btn primary" onClick={() => setEditor({ mode: 'vehicle' })}>
             Добавить расход
           </button>
         ) : null}
       </div>
       {allowed ? null : <p className="hint">Просмотр. Менять расходы может тот, у кого есть это право.</p>}
       <p className="muted">
-        Итого по фильтру: {money(sumExpenses(rows))}. Кроме топлива, к сумме добавлен НДС {VAT_PERCENT}%. Топливо,
-        суточные и погрузка записываются на машину. Платон и платные дороги идут отдельно, без машины, и остаются, если
-        рейс удалить.
+        Итого по фильтру: {money(sumExpenses(rows))}. Кроме топлива, к сумме добавлен НДС {VAT_PERCENT}%. Карточки
+        «Платон», «Ремзона» и «Платные дороги» спрашивают дату, категорию и сумму, без машины. Топливо, суточные и погрузка — кнопка
+        «Добавить расход», там нужна машина.
       </p>
       <section className="card">
         {rows.length === 0 ? (
@@ -111,7 +145,7 @@ export function ExpensesPage() {
                       <td className="row-actions">
                         {allowed ? (
                           <>
-                            <button type="button" className="text-btn" onClick={() => setEditor(expense)}>
+                            <button type="button" className="text-btn" onClick={() => openExpense(expense)}>
                               Изменить
                             </button>
                             <button
@@ -138,14 +172,30 @@ export function ExpensesPage() {
         )}
       </section>
       {editor ? (
-        <Drawer title={editor === 'new' ? 'Расход' : 'Изменить расход'} onClose={() => setEditor(null)}>
-          <ExpenseForm
-            initial={editor === 'new' ? undefined : editor}
-            onCancel={() => setEditor(null)}
-            onSubmit={async (expense) => {
-              if (await saveExpense(expense)) setEditor(null)
-            }}
-          />
+        <Drawer
+          title={
+            editor.expense ? 'Изменить расход' : editor.mode === 'shared' ? expenseCategoryLabel[editor.category] : 'Расход по машине'
+          }
+          onClose={() => setEditor(null)}
+        >
+          {editor.mode === 'shared' ? (
+            <SharedExpenseForm
+              category={editor.category}
+              initial={editor.expense}
+              onCancel={() => setEditor(null)}
+              onSubmit={async (expense) => {
+                if (await saveExpense(expense)) setEditor(null)
+              }}
+            />
+          ) : (
+            <ExpenseForm
+              initial={editor.expense}
+              onCancel={() => setEditor(null)}
+              onSubmit={async (expense) => {
+                if (await saveExpense(expense)) setEditor(null)
+              }}
+            />
+          )}
         </Drawer>
       ) : null}
       {confirm ? (

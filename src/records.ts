@@ -15,7 +15,17 @@ import type {
 
 const TRIP_STATUS = new Set<TripStatus>(['planned', 'loading', 'in_transit', 'delivered', 'closed', 'cancelled'])
 const PARK_STATUS = new Set<ParkStatus>(['available', 'repair', 'downtime'])
-const EXPENSE_CATEGORY = new Set<ExpenseCategory>(['fuel', 'toll', 'platon', 'driver', 'salary', 'loading', 'parking', 'other'])
+const EXPENSE_CATEGORY = new Set<ExpenseCategory>([
+  'fuel',
+  'toll',
+  'platon',
+  'workshop',
+  'driver',
+  'salary',
+  'loading',
+  'parking',
+  'other',
+])
 const REPAIR_KIND = new Set<RepairKind>(['maintenance', 'repair', 'tires', 'parts', 'body'])
 const REPAIR_STATUS = new Set<RepairStatus>(['queued', 'in_progress', 'done'])
 const PAY_METHOD = new Set<PayMethod>(['bank', 'cash', 'card'])
@@ -194,7 +204,7 @@ export function parseExpense(value: unknown): TripExpense | null {
   ) {
     return null
   }
-  const shared = parsed.category === 'toll' || parsed.category === 'platon'
+  const shared = parsed.category === 'toll' || parsed.category === 'platon' || parsed.category === 'workshop'
   if (!shared && !parsed.vehicleId) return null
   return {
     id: parsed.id,

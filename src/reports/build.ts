@@ -98,7 +98,7 @@ const notes: Record<ReportKind, string> = {
   trips:
     'Рейсы отобраны по дате выхода. Оплаты в реестре и сводках показаны целиком, даже если часть из них попала в другой месяц.',
   expenses:
-    'Строки отобраны по дате расхода. Топливо, суточные и погрузка относятся к машине. Платон и платные дороги записаны отдельно, без машины. Зарплата выделена отдельной статьёй, даже если за период её не было.',
+    'Строки отобраны по дате расхода. Топливо, суточные и погрузка относятся к машине. Платон, ремзона и платные дороги записаны отдельно, без машины. Зарплата выделена отдельной статьёй, даже если за период её не было.',
   repairs: 'Заявки и сводки отобраны по дате постановки в ремзону.',
   payments: 'Оплаты и сводки отобраны по дате поступления денег.',
   debts: 'Только рейсы с остатком к оплате. Просрочка считается на момент формирования отчёта.',
@@ -530,6 +530,7 @@ function expenseBreakdowns(state: State, from: string, to: string): ReportSectio
     column('Топливо', 'right', 14, 'money'),
     column('Платные дороги', 'right', 16, 'money'),
     column('Платон', 'right', 14, 'money'),
+    column('Ремзона', 'right', 14, 'money'),
     column('Суточные', 'right', 14, 'money'),
     column('Зарплата', 'right', 14, 'money'),
     column('Прочее', 'right', 14, 'money'),
@@ -540,11 +541,12 @@ function expenseBreakdowns(state: State, from: string, to: string): ReportSectio
       const fuel = expenseAmount(rows, 'fuel')
       const toll = expenseAmount(rows, 'toll')
       const platon = expenseAmount(rows, 'platon')
+      const workshop = expenseAmount(rows, 'workshop')
       const perDiem = expenseAmount(rows, 'driver')
       const salary = expenseAmount(rows, 'salary')
       const total = sumExpenses(rows)
-      const rest = round2(total - fuel - toll - platon - perDiem - salary)
-      return [vehicleLabel(state, vehicleId), fuel, toll, platon, perDiem, salary, rest, total]
+      const rest = round2(total - fuel - toll - platon - workshop - perDiem - salary)
+      return [vehicleLabel(state, vehicleId), fuel, toll, platon, workshop, perDiem, salary, rest, total]
     })
     .sort((a, b) => String(a[0]).localeCompare(String(b[0]), 'ru'))
 

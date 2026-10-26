@@ -2,10 +2,12 @@ import { useState, type FormEvent } from 'react'
 import { copiedTrip, debtOf, nextTripNumber, parseMoney, parseOdometer, parseWeight, round2, sumAmounts } from './calc'
 import {
   dateRu,
-  expenseCategories,
   expenseCategoryLabel,
   expenseEntryHint,
   expenseSkipsVehicle,
+  sharedExpenseCategories,
+  vehicleExpenseCategories,
+  type SharedExpenseCategory,
   money,
   payMethodLabel,
   payMethods,
@@ -271,7 +273,7 @@ export function ExpenseForm({
       </Field>
       <Field label="Категория">
         <select value={category} onChange={(event) => setCategory(event.target.value as TripExpense['category'])}>
-          {expenseCategories.map((item) => (
+          {vehicleExpenseCategories.map((item) => (
             <option key={item} value={item}>
               {expenseCategoryLabel[item]}
             </option>
@@ -288,6 +290,72 @@ export function ExpenseForm({
       <div className="wide">
         <FormError text={error} />
         <FormFooter onCancel={onCancel} onDelete={onDelete} />
+      </div>
+    </form>
+  )
+}
+
+export function SharedExpenseForm({
+  initial,
+  category,
+  onSubmit,
+  onCancel,
+}: {
+  initial?: TripExpense
+  category: SharedExpenseCategory
+  onSubmit: (expense: TripExpense) => void
+  onCancel: () => void
+}) {
+  const [date, setDate] = useState(initial?.date ?? todayIso())
+  const [picked, setPicked] = useState<SharedExpenseCategory>(
+    initial && expenseSkipsVehicle(initial.category) ? (initial.category as SharedExpenseCategory) : category,
+  )
+  const [amount, setAmount] = useState(initial ? String(initial.amount) : '')
+  const [error, setError] = useState('')
+
+  function submit(event: FormEvent) {
+    event.preventDefault()
+    const parsed = parseMoney(amount)
+    if (!date) {
+      setError('Укажите дату расхода.')
+      return
+    }
+    if (parsed === null || parsed <= 0) {
+      setError('Сумма расхода должна быть больше нуля.')
+      return
+    }
+    onSubmit({
+      id: initial?.id ?? uid('e'),
+      vehicleId: '',
+      tripId: initial?.tripId ?? '',
+      date,
+      category: picked,
+      amount: parsed,
+      comment: initial?.comment ?? '',
+    })
+  }
+
+  return (
+    <form className="form-grid" onSubmit={submit}>
+      <Field label="Дата">
+        <input type="date" value={date} onChange={(event) => setDate(event.target.value)} required autoFocus />
+      </Field>
+      <Field label="Категория">
+        <select value={picked} onChange={(event) => setPicked(event.target.value as SharedExpenseCategory)}>
+          {sharedExpenseCategories.map((item) => (
+            <option key={item} value={item}>
+              {expenseCategoryLabel[item]}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Сумма без НДС, ₽" wide>
+        <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
+      </Field>
+      <p className="hint wide">{expenseEntryHint(picked, parseMoney(amount))}</p>
+      <div className="wide">
+        <FormError text={error} />
+        <FormFooter onCancel={onCancel} />
       </div>
     </form>
   )
