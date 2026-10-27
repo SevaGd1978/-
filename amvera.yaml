@@ -1,0 +1,15 @@
+meta:
+  environment: node
+  toolchain:
+    name: npm
+    version: "22"
+
+build:
+  # Vite and TypeScript are devDependencies. Amvera's first install skips them
+  # when NODE_ENV=production, so install them again before the client build.
+  additionalCommands: npm install --include=dev && npm run build
+
+run:
+  command: PORT=3000 npm run start
+  containerPort: 3000
+  persistenceMount: /data
