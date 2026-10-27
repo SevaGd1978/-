@@ -36,6 +36,11 @@ const toll = parseExpense({
   comment: 'М-12',
 })
 assert.equal(toll?.vehicleId, '')
+assert.equal(toll?.vat, null)
+assert.equal(parseExpense({ ...toll, id: 'e_vat', vat: 100 })?.vat, 100)
+assert.equal(parseExpense({ ...toll, id: 'e_zero', vat: 0 })?.vat, 0)
+assert.equal(parseExpense({ ...toll, id: 'e_bad', vat: -1 }), null)
+assert.equal(parseExpense({ ...toll, id: 'e_text', vat: 'нет' }), null)
 assert.equal(parseExpense({ ...toll, id: 'e_fuel', category: 'fuel', vehicleId: '' }), null)
 const workshop = parseExpense({
   id: 'e_shop',

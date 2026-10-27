@@ -105,10 +105,14 @@ export function money(value: number) {
   }).format(value)
 }
 
-export function expenseEntryHint(category: string, amount: number | null) {
-  if (category === 'fuel') return 'Топливо учитывается без НДС.'
-  if (amount == null || amount <= 0) return `К сумме добавится НДС ${VAT_PERCENT}%.`
-  return `К учёту ${money(expenseWithVat(category, amount))}, в том числе НДС ${VAT_PERCENT}%.`
+export function expenseEntryHint(category: string, amount: number | null, manual: number | null) {
+  if (manual != null) {
+    if (amount == null || amount <= 0) return `НДС ${money(manual)} запишется как введён.`
+    return `К учёту ${money(expenseWithVat(category, amount, manual))}, в том числе НДС ${money(manual)}.`
+  }
+  if (category === 'fuel') return 'Пустое поле НДС оставляет топливо без налога. Свою сумму можно вписать.'
+  if (amount == null || amount <= 0) return `Пустое поле НДС посчитает ${VAT_PERCENT}%. Свою сумму можно вписать.`
+  return `К учёту ${money(expenseWithVat(category, amount))}, в том числе НДС ${VAT_PERCENT}%. Свою сумму можно вписать.`
 }
 
 export function formatPlain(value: number) {

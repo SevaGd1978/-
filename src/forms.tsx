@@ -221,6 +221,7 @@ export function ExpenseForm({
   const [date, setDate] = useState(initial?.date ?? todayIso())
   const [category, setCategory] = useState(initial?.category ?? 'fuel')
   const [amount, setAmount] = useState(initial ? String(initial.amount) : '')
+  const [vat, setVat] = useState(initial?.vat != null ? String(initial.vat) : '')
   const [comment, setComment] = useState(initial?.comment ?? '')
   const [error, setError] = useState('')
   const vehicles = [...state.vehicles].sort((a, b) => a.plate.localeCompare(b.plate, 'ru'))
@@ -241,6 +242,11 @@ export function ExpenseForm({
       setError('Сумма расхода должна быть больше нуля.')
       return
     }
+    const manual = vat.trim() === '' ? null : parseMoney(vat)
+    if (manual === null && vat.trim() !== '') {
+      setError('НДС укажите числом или оставьте поле пустым.')
+      return
+    }
     onSubmit({
       id: initial?.id ?? uid('e'),
       vehicleId: shared ? '' : vehicleId,
@@ -248,6 +254,7 @@ export function ExpenseForm({
       date,
       category,
       amount: parsed,
+      vat: manual,
       comment: comment.trim(),
     })
   }
@@ -283,7 +290,18 @@ export function ExpenseForm({
       <Field label={category === 'fuel' ? 'Сумма, ₽' : 'Сумма без НДС, ₽'}>
         <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
       </Field>
-      <p className="hint wide">{expenseEntryHint(category, parseMoney(amount))}</p>
+      <Field label="НДС, ₽">
+        <input
+          inputMode="decimal"
+          value={vat}
+          onChange={(event) => {
+            setVat(event.target.value)
+            setError('')
+          }}
+          placeholder="само"
+        />
+      </Field>
+      <p className="hint wide">{expenseEntryHint(category, parseMoney(amount), vat.trim() === '' ? null : parseMoney(vat))}</p>
       <Field label="Комментарий" wide>
         <input value={comment} onChange={(event) => setComment(event.target.value)} placeholder="АЗС, литры, документ" />
       </Field>
@@ -311,6 +329,7 @@ export function SharedExpenseForm({
     initial && expenseSkipsVehicle(initial.category) ? (initial.category as SharedExpenseCategory) : category,
   )
   const [amount, setAmount] = useState(initial ? String(initial.amount) : '')
+  const [vat, setVat] = useState(initial?.vat != null ? String(initial.vat) : '')
   const [error, setError] = useState('')
 
   function submit(event: FormEvent) {
@@ -324,6 +343,11 @@ export function SharedExpenseForm({
       setError('Сумма расхода должна быть больше нуля.')
       return
     }
+    const manual = vat.trim() === '' ? null : parseMoney(vat)
+    if (manual === null && vat.trim() !== '') {
+      setError('НДС укажите числом или оставьте поле пустым.')
+      return
+    }
     onSubmit({
       id: initial?.id ?? uid('e'),
       vehicleId: '',
@@ -331,6 +355,7 @@ export function SharedExpenseForm({
       date,
       category: picked,
       amount: parsed,
+      vat: manual,
       comment: initial?.comment ?? '',
     })
   }
@@ -349,10 +374,21 @@ export function SharedExpenseForm({
           ))}
         </select>
       </Field>
-      <Field label="Сумма без НДС, ₽" wide>
+      <Field label="Сумма без НДС, ₽">
         <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
       </Field>
-      <p className="hint wide">{expenseEntryHint(picked, parseMoney(amount))}</p>
+      <Field label="НДС, ₽">
+        <input
+          inputMode="decimal"
+          value={vat}
+          onChange={(event) => {
+            setVat(event.target.value)
+            setError('')
+          }}
+          placeholder="само"
+        />
+      </Field>
+      <p className="hint wide">{expenseEntryHint(picked, parseMoney(amount), vat.trim() === '' ? null : parseMoney(vat))}</p>
       <div className="wide">
         <FormError text={error} />
         <FormFooter onCancel={onCancel} />

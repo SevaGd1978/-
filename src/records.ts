@@ -204,6 +204,12 @@ export function parseExpense(value: unknown): TripExpense | null {
   ) {
     return null
   }
+  let vat: number | null = null
+  if (row.vat != null && row.vat !== '') {
+    const manual = money(row.vat)
+    if (manual == null) return null
+    vat = manual
+  }
   const shared = parsed.category === 'toll' || parsed.category === 'platon' || parsed.category === 'workshop'
   if (!shared && !parsed.vehicleId) return null
   return {
@@ -213,6 +219,7 @@ export function parseExpense(value: unknown): TripExpense | null {
     date: parsed.date,
     category: parsed.category,
     amount: parsed.amount,
+    vat,
     comment: parsed.comment,
   }
 }

@@ -62,7 +62,7 @@ export function ExpensesPage() {
             <>
               <span>{expenseCategoryLabel[item]}</span>
               <strong className="num">{money(sumExpenses(matched))}</strong>
-              <em>Дата, категория и сумма</em>
+              <em>Дата, категория, сумма и НДС</em>
             </>
           )
           return allowed ? (
@@ -110,7 +110,8 @@ export function ExpensesPage() {
       </div>
       {allowed ? null : <p className="hint">Просмотр. Менять расходы может тот, у кого есть это право.</p>}
       <p className="muted">
-        Итого по фильтру: {money(sumExpenses(rows))}. Кроме топлива, к сумме добавлен НДС {VAT_PERCENT}%. Карточки
+        Итого по фильтру: {money(sumExpenses(rows))}. Пустое поле НДС считает {VAT_PERCENT}% (на топливе ноль), вписанная сумма
+        записывается как есть. Карточки
         «Платон», «Ремзона» и «Платные дороги» спрашивают дату, категорию и сумму, без машины. Топливо, суточные и погрузка — кнопка
         «Добавить расход», там нужна машина.
       </p>
@@ -140,7 +141,7 @@ export function ExpensesPage() {
                       <td>{expenseCategoryLabel[expense.category]}</td>
                       <td>{expense.comment || '—'}</td>
                       <td className="num">
-                        <ExpenseAmount category={expense.category} amount={expense.amount} />
+                        <ExpenseAmount category={expense.category} amount={expense.amount} vat={expense.vat} />
                       </td>
                       <td className="row-actions">
                         {allowed ? (
@@ -153,7 +154,7 @@ export function ExpensesPage() {
                               className="text-btn danger-text"
                               onClick={() =>
                                 setConfirm({
-                                  text: `Удалить расход ${money(expenseWithVat(expense.category, expense.amount))}?`,
+                                  text: `Удалить расход ${money(expenseWithVat(expense.category, expense.amount, expense.vat))}?`,
                                   run: () => void deleteExpense(expense.id),
                                 })
                               }

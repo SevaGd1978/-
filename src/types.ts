@@ -50,6 +50,8 @@ export interface TripExpense {
   date: string
   category: ExpenseCategory
   amount: number
+  /** Ручной НДС. Пустое значение считает 22% само, на топливе ноль. */
+  vat?: number | null
   comment: string
 }
 

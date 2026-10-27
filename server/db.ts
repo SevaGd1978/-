@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS expenses (
   category TEXT NOT NULL,
   amount REAL NOT NULL,
   comment TEXT NOT NULL,
+  vat REAL,
   position INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS repairs (
@@ -91,6 +92,7 @@ export function openDatabase(file: string): Sql {
   ensureVehicleStatus(db)
   ensureVehicleSts(db)
   ensureExpenseVehicle(db)
+  ensureExpenseVat(db)
   ensureRoadCache(db)
   ensureAccounts(db)
   rememberTripCustomers(db)
@@ -211,11 +213,11 @@ export function saveExpense(db: Sql, expense: TripExpense): DbResult {
     }
     const position = nextPosition(db, 'expenses', expense.id)
     db.prepare(
-      `INSERT INTO expenses (id, trip_id, vehicle_id, date, category, amount, comment, position)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO expenses (id, trip_id, vehicle_id, date, category, amount, vat, comment, position)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          vehicle_id = excluded.vehicle_id, date = excluded.date, category = excluded.category,
-         amount = excluded.amount, comment = excluded.comment`,
+         amount = excluded.amount, vat = excluded.vat, comment = excluded.comment`,
     ).run(
       expense.id,
       expense.tripId,
@@ -223,6 +225,7 @@ export function saveExpense(db: Sql, expense: TripExpense): DbResult {
       expense.date,
       expense.category,
       expense.amount,
+      expense.vat ?? null,
       expense.comment,
       position,
     )
@@ -414,8 +417,8 @@ function insertTrips(db: Sql, rows: Trip[]) {
 
 function insertExpenses(db: Sql, rows: TripExpense[]) {
   const stmt = db.prepare(
-    `INSERT INTO expenses (id, trip_id, vehicle_id, date, category, amount, comment, position)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO expenses (id, trip_id, vehicle_id, date, category, amount, vat, comment, position)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   rows.forEach((row, index) =>
     stmt.run(
@@ -425,6 +428,7 @@ function insertExpenses(db: Sql, rows: TripExpense[]) {
       row.date,
       row.category,
       row.amount,
+      row.vat ?? null,
       row.comment,
       rank(index, rows.length),
     ),
@@ -543,6 +547,12 @@ function ensureExpenseVehicle(db: Sql) {
   )
 }
 
+function ensureExpenseVat(db: Sql) {
+  const columns = db.prepare(`PRAGMA table_info(expenses)`).all() as { name: string }[]
+  if (columns.some((column) => column.name === 'vat')) return
+  db.exec(`ALTER TABLE expenses ADD COLUMN vat REAL`)
+}
+
 function unbindSharedCosts(db: Sql) {
   const removed = db.prepare(`DELETE FROM expenses WHERE id LIKE 'platon\\_%' ESCAPE '\\'`).run()
   const expenses = db
@@ -584,7 +594,7 @@ function readState(db: Sql): State {
       .all() as unknown as Trip[],
     expenses: db
       .prepare(
-        `SELECT id, vehicle_id AS vehicleId, trip_id AS tripId, date, category, amount, comment
+        `SELECT id, vehicle_id AS vehicleId, trip_id AS tripId, date, category, amount, vat, comment
          FROM expenses ORDER BY position DESC`,
       )
       .all() as unknown as TripExpense[],

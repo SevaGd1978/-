@@ -91,6 +91,12 @@ assert.equal(expenseWithVat('toll', 2400), 2928)
 assert.equal(expenseWithVat('salary', 100), 122)
 assert.equal(expenseVat('platon', 1129.86), 248.57)
 assert.equal(expenseWithVat('platon', 1129.86), 1378.43)
+assert.equal(expenseVat('toll', 1000, 50), 50)
+assert.equal(expenseWithVat('toll', 1000, 50), 1050)
+assert.equal(expenseVat('fuel', 1000, 180), 180)
+assert.equal(expenseVat('toll', 1000, null), 220)
+assert.equal(expenseVat('toll', 1000, 0), 0)
+assert.equal(expenseWithVat('toll', 1000, 0), 1000)
 assert.equal(
   sumExpenses([
     { category: 'fuel', amount: 18500 },

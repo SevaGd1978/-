@@ -61,6 +61,21 @@ try {
   assert.equal(toll.ok, true)
   if (!toll.ok) throw new Error('toll')
   assert.equal(toll.state.expenses.find((expense) => expense.id === 'e_toll')?.vehicleId, '')
+  assert.equal(toll.state.expenses.find((expense) => expense.id === 'e_toll')?.vat ?? null, null)
+  const taxed = saveExpense(third, {
+    id: 'e_toll',
+    vehicleId: 'v1',
+    tripId: '',
+    date: '2026-10-21',
+    category: 'toll',
+    amount: 1000,
+    vat: 50,
+    comment: 'М-12',
+  })
+  assert.equal(taxed.ok, true)
+  if (!taxed.ok) throw new Error('vat')
+  assert.equal(taxed.state.expenses.find((expense) => expense.id === 'e_toll')?.vat, 50)
+  assert.equal(taxed.state.expenses.find((expense) => expense.id === 'e2')?.vat ?? null, null)
   const fuel = saveExpense(third, {
     id: 'e_fuel',
     vehicleId: '',

@@ -7,21 +7,22 @@ export function round2(value: number) {
 /** НДС с 2026 года. На топливо не начисляется: сумма в учёте остаётся как введена. */
 export const VAT_PERCENT = 22
 
-export function expenseVat(category: string, amount: number) {
+export function expenseVat(category: string, amount: number, manual?: number | null) {
+  if (manual != null) return round2(manual)
   if (category === 'fuel') return 0
   return round2((amount * VAT_PERCENT) / 100)
 }
 
-export function expenseWithVat(category: string, amount: number) {
-  return round2(amount + expenseVat(category, amount))
+export function expenseWithVat(category: string, amount: number, manual?: number | null) {
+  return round2(amount + expenseVat(category, amount, manual))
 }
 
 export function sumAmounts(rows: { amount: number }[]) {
   return round2(rows.reduce((total, row) => total + row.amount, 0))
 }
 
-export function sumExpenses(rows: { category: string; amount: number }[]) {
-  return round2(rows.reduce((total, row) => total + expenseWithVat(row.category, row.amount), 0))
+export function sumExpenses(rows: { category: string; amount: number; vat?: number | null }[]) {
+  return round2(rows.reduce((total, row) => total + expenseWithVat(row.category, row.amount, row.vat), 0))
 }
 
 export function debtOf(trip: Trip, paid: number) {

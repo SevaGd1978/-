@@ -2,12 +2,12 @@ import { useEffect, type ReactNode } from 'react'
 import { expenseVat, expenseWithVat } from './calc'
 import { money } from './format'
 
-export function ExpenseAmount({ category, amount }: { category: string; amount: number }) {
-  const vat = expenseVat(category, amount)
+export function ExpenseAmount({ category, amount, vat }: { category: string; amount: number; vat?: number | null }) {
+  const tax = expenseVat(category, amount, vat)
   return (
     <>
-      {money(expenseWithVat(category, amount))}
-      {vat > 0 ? <small className="muted">НДС {money(vat)}</small> : null}
+      {money(expenseWithVat(category, amount, vat))}
+      {tax > 0 ? <small className="muted">НДС {money(tax)}</small> : null}
     </>
   )
 }

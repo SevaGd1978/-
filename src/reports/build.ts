@@ -98,7 +98,7 @@ const notes: Record<ReportKind, string> = {
   trips:
     'Рейсы отобраны по дате выхода. Оплаты в реестре и сводках показаны целиком, даже если часть из них попала в другой месяц.',
   expenses:
-    'Строки отобраны по дате расхода. Топливо, суточные и погрузка относятся к машине. Платон, ремзона и платные дороги записаны отдельно, без машины. Зарплата выделена отдельной статьёй, даже если за период её не было.',
+    'Строки отобраны по дате расхода. Топливо, суточные и погрузка относятся к машине. Платон, ремзона и платные дороги записаны отдельно, без машины. Если НДС не вписан вручную, к расходам кроме топлива добавляется 22%. Зарплата выделена отдельной статьёй, даже если за период её не было.',
   repairs: 'Заявки и сводки отобраны по дате постановки в ремзону.',
   payments: 'Оплаты и сводки отобраны по дате поступления денег.',
   debts: 'Только рейсы с остатком к оплате. Просрочка считается на момент формирования отчёта.',
@@ -395,7 +395,7 @@ function expenseSection(state: State, from: string, to: string): ReportSection {
     column('Статья', 'left', 24, 'text'),
     column('Комментарий', 'left', 32, 'text'),
     column('Без НДС', 'right', 14, 'money'),
-    column('НДС 22%', 'right', 14, 'money'),
+    column('НДС', 'right', 14, 'money'),
     column('С НДС', 'right', 14, 'money'),
   ]
   const rows = state.expenses
@@ -407,8 +407,8 @@ function expenseSection(state: State, from: string, to: string): ReportSection {
       expenseCategoryLabel[expense.category],
       expense.comment || '—',
       expense.amount,
-      expenseVat(expense.category, expense.amount),
-      expenseWithVat(expense.category, expense.amount),
+      expenseVat(expense.category, expense.amount, expense.vat),
+      expenseWithVat(expense.category, expense.amount, expense.vat),
     ])
   return { title: 'Расходы', columns, rows, totals: totalRow(rows, columns) }
 }
@@ -554,7 +554,7 @@ function expenseBreakdowns(state: State, from: string, to: string): ReportSectio
   for (const expense of expenses) {
     const name = vehicleLabel(state, expense.vehicleId)
     const bucket = byLabor.get(name) ?? { perDiem: 0, salary: 0, other: 0 }
-    const gross = expenseWithVat(expense.category, expense.amount)
+    const gross = expenseWithVat(expense.category, expense.amount, expense.vat)
     if (expense.category === 'driver') bucket.perDiem = round2(bucket.perDiem + gross)
     else if (expense.category === 'salary') bucket.salary = round2(bucket.salary + gross)
     else bucket.other = round2(bucket.other + gross)
@@ -602,7 +602,7 @@ function laborSection(state: State, from: string, to: string): ReportSection {
     if (expense.category !== 'driver' && expense.category !== 'salary') continue
     const name = vehicleLabel(state, expense.vehicleId)
     const bucket = groups.get(name) ?? { perDiem: 0, salary: 0 }
-    const gross = expenseWithVat(expense.category, expense.amount)
+    const gross = expenseWithVat(expense.category, expense.amount, expense.vat)
     if (expense.category === 'driver') bucket.perDiem = round2(bucket.perDiem + gross)
     else bucket.salary = round2(bucket.salary + gross)
     groups.set(name, bucket)
