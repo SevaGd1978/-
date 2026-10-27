@@ -119,7 +119,7 @@ export function Dashboard({ onOpenTrip }: { onOpenTrip: (id: string) => void }) 
         <article className="kpi">
           <span>Расходы</span>
           <strong className="num">{money(tripSpend)}</strong>
-          <em>Топливо по машинам, Платон и дороги отдельно</em>
+          <em>Топливо, Платон и дороги отдельно, без машины</em>
         </article>
         <article className="kpi">
           <span>Ремзона</span>

@@ -152,8 +152,8 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
         </article>
       </section>
       <p className="muted">
-        Срок оплаты: {trip.payDue ? dateRu(trip.payDue) : 'не задан'}. Топливо и суточные ведутся по машине. Платон и
-        платные дороги записываются отдельно.
+        Срок оплаты: {trip.payDue ? dateRu(trip.payDue) : 'не задан'}. Топливо, Платон и платные дороги записываются отдельно,
+        без машины. Суточные можно провести по машине или в общие расходы.
       </p>
 
       <section className="card">

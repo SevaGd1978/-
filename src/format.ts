@@ -22,12 +22,18 @@ export const expenseCategoryLabel: Record<ExpenseCategory, string> = {
   other: 'Прочее',
 }
 
-export const sharedExpenseCategories = ['platon', 'workshop', 'toll'] as const
+export const sharedExpenseCategories = ['fuel', 'platon', 'workshop', 'toll'] as const
+export const generalExpenseCategories = ['driver', 'salary', 'loading', 'parking', 'other'] as const
 
 export type SharedExpenseCategory = (typeof sharedExpenseCategories)[number]
+export type GeneralExpenseCategory = (typeof generalExpenseCategories)[number]
 
 export function expenseSkipsVehicle(category: string) {
   return (sharedExpenseCategories as readonly string[]).includes(category)
+}
+
+export function expenseAllowsEmptyVehicle(category: string) {
+  return expenseSkipsVehicle(category) || (generalExpenseCategories as readonly string[]).includes(category)
 }
 
 export const vehicleExpenseCategories = (Object.keys(expenseCategoryLabel) as ExpenseCategory[]).filter(

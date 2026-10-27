@@ -41,7 +41,20 @@ assert.equal(parseExpense({ ...toll, id: 'e_vat', vat: 100 })?.vat, 100)
 assert.equal(parseExpense({ ...toll, id: 'e_zero', vat: 0 })?.vat, 0)
 assert.equal(parseExpense({ ...toll, id: 'e_bad', vat: -1 }), null)
 assert.equal(parseExpense({ ...toll, id: 'e_text', vat: 'нет' }), null)
-assert.equal(parseExpense({ ...toll, id: 'e_fuel', category: 'fuel', vehicleId: '' }), null)
+const fuel = parseExpense({ ...toll, id: 'e_fuel', category: 'fuel', vehicleId: 'v1' })
+assert.equal(fuel?.vehicleId, '')
+assert.equal(fuel?.category, 'fuel')
+const general = parseExpense({
+  id: 'e_park',
+  vehicleId: '',
+  date: '2026-10-21',
+  category: 'parking',
+  amount: 400,
+  comment: 'Стоянка',
+})
+assert.equal(general?.vehicleId, '')
+assert.equal(general?.category, 'parking')
+assert.equal(parseExpense({ ...general, id: 'e_bad_vehicle', vehicleId: 'нет такой' }), null)
 const workshop = parseExpense({
   id: 'e_shop',
   vehicleId: 'v2',

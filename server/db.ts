@@ -206,9 +206,9 @@ export function deleteTrip(db: Sql, id: string): DbResult {
 
 export function saveExpense(db: Sql, expense: TripExpense): DbResult {
   return transaction(db, () => {
-    const shared = expense.category === 'toll' || expense.category === 'platon' || expense.category === 'workshop'
+    const shared = expense.category === 'toll' || expense.category === 'platon' || expense.category === 'workshop' || expense.category === 'fuel'
     const vehicleId = shared ? '' : expense.vehicleId
-    if (!shared && !count(db, `SELECT COUNT(*) AS n FROM vehicles WHERE id = ?`, vehicleId)) {
+    if (vehicleId && !count(db, `SELECT COUNT(*) AS n FROM vehicles WHERE id = ?`, vehicleId)) {
       return fail(400, 'Выберите машину из парка')
     }
     const position = nextPosition(db, 'expenses', expense.id)
@@ -542,7 +542,7 @@ function ensureExpenseVehicle(db: Sql) {
      SET vehicle_id = (SELECT vehicle_id FROM trips WHERE trips.id = expenses.trip_id)
      WHERE vehicle_id = ''
        AND trip_id != ''
-       AND category NOT IN ('toll', 'platon', 'workshop')
+       AND category NOT IN ('toll', 'platon', 'workshop', 'fuel')
        AND EXISTS (SELECT 1 FROM trips WHERE trips.id = expenses.trip_id)`,
   )
 }
@@ -556,7 +556,7 @@ function ensureExpenseVat(db: Sql) {
 function unbindSharedCosts(db: Sql) {
   const removed = db.prepare(`DELETE FROM expenses WHERE id LIKE 'platon\\_%' ESCAPE '\\'`).run()
   const expenses = db
-    .prepare(`UPDATE expenses SET vehicle_id = '' WHERE category IN ('toll', 'platon', 'workshop') AND vehicle_id != ''`)
+    .prepare(`UPDATE expenses SET vehicle_id = '' WHERE category IN ('toll', 'platon', 'workshop', 'fuel') AND vehicle_id != ''`)
     .run()
   const repairs = db
     .prepare(

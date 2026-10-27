@@ -210,8 +210,7 @@ export function parseExpense(value: unknown): TripExpense | null {
     if (manual == null) return null
     vat = manual
   }
-  const shared = parsed.category === 'toll' || parsed.category === 'platon' || parsed.category === 'workshop'
-  if (!shared && !parsed.vehicleId) return null
+  const shared = parsed.category === 'toll' || parsed.category === 'platon' || parsed.category === 'workshop' || parsed.category === 'fuel'
   return {
     id: parsed.id,
     vehicleId: shared ? '' : parsed.vehicleId,

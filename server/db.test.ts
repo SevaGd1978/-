@@ -72,7 +72,7 @@ try {
   })
   assert.equal(expense.ok, true)
   if (!expense.ok) throw new Error('expense')
-  assert.equal(expense.state.expenses.find((item) => item.id === 'e_new')?.vehicleId, 'v1')
+  assert.equal(expense.state.expenses.find((item) => item.id === 'e_new')?.vehicleId, '')
   const removed = deleteTrip(again, 't_new')
   assert.equal(removed.ok, true)
   if (!removed.ok) throw new Error('removed')

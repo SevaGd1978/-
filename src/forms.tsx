@@ -5,9 +5,7 @@ import {
   expenseCategoryLabel,
   expenseEntryHint,
   expenseSkipsVehicle,
-  sharedExpenseCategories,
   vehicleExpenseCategories,
-  type SharedExpenseCategory,
   money,
   payMethodLabel,
   payMethods,
@@ -191,8 +189,8 @@ export function CopyTripDrawer({
     <Drawer title={`Копия ${source.number}`} onClose={onClose}>
       <p className="hint">
         Новый рейс по образцу {source.number}: маршрут, заказчик, груз, машина, водитель и ставка. Номер {draft.number},
-        дата сегодня, статус «Запланирован». Оплаты исходного рейса остаются на нём. Топливо и суточные ведутся по
-        машине. Платон и платные дороги записываются отдельно, без машины.
+        дата сегодня, статус «Запланирован». Оплаты исходного рейса остаются на нём. Топливо, Платон и платные дороги
+        записываются отдельно, без машины. Суточные и прочие затраты можно провести по машине или в общие расходы.
       </p>
       <TripForm
         initial={draft}
@@ -219,7 +217,9 @@ export function ExpenseForm({
   const { state } = useData()
   const [vehicleId, setVehicleId] = useState(initial?.vehicleId ?? '')
   const [date, setDate] = useState(initial?.date ?? todayIso())
-  const [category, setCategory] = useState(initial?.category ?? 'fuel')
+  const [category, setCategory] = useState(
+    initial?.category && !expenseSkipsVehicle(initial.category) ? initial.category : 'driver',
+  )
   const [amount, setAmount] = useState(initial ? String(initial.amount) : '')
   const [vat, setVat] = useState(initial?.vat != null ? String(initial.vat) : '')
   const [comment, setComment] = useState(initial?.comment ?? '')
@@ -262,7 +262,7 @@ export function ExpenseForm({
   return (
     <form className="form-grid" onSubmit={submit}>
       {shared ? (
-        <p className="hint wide">Платон и платные дороги записываются отдельно, без машины.</p>
+        <p className="hint wide">Эта статья записывается без машины.</p>
       ) : (
         <Field label="Машина" wide>
           <select value={vehicleId} onChange={(event) => setVehicleId(event.target.value)} autoFocus>
@@ -316,17 +316,19 @@ export function ExpenseForm({
 export function SharedExpenseForm({
   initial,
   category,
+  categories,
   onSubmit,
   onCancel,
 }: {
   initial?: TripExpense
-  category: SharedExpenseCategory
+  category: TripExpense['category']
+  categories: readonly TripExpense['category'][]
   onSubmit: (expense: TripExpense) => void
   onCancel: () => void
 }) {
   const [date, setDate] = useState(initial?.date ?? todayIso())
-  const [picked, setPicked] = useState<SharedExpenseCategory>(
-    initial && expenseSkipsVehicle(initial.category) ? (initial.category as SharedExpenseCategory) : category,
+  const [picked, setPicked] = useState<TripExpense['category']>(
+    initial && categories.includes(initial.category) ? initial.category : category,
   )
   const [amount, setAmount] = useState(initial ? String(initial.amount) : '')
   const [vat, setVat] = useState(initial?.vat != null ? String(initial.vat) : '')
@@ -366,15 +368,15 @@ export function SharedExpenseForm({
         <input type="date" value={date} onChange={(event) => setDate(event.target.value)} required autoFocus />
       </Field>
       <Field label="Категория">
-        <select value={picked} onChange={(event) => setPicked(event.target.value as SharedExpenseCategory)}>
-          {sharedExpenseCategories.map((item) => (
+        <select value={picked} onChange={(event) => setPicked(event.target.value as TripExpense['category'])}>
+          {categories.map((item) => (
             <option key={item} value={item}>
               {expenseCategoryLabel[item]}
             </option>
           ))}
         </select>
       </Field>
-      <Field label="Сумма без НДС, ₽">
+      <Field label={picked === 'fuel' ? 'Сумма, ₽' : 'Сумма без НДС, ₽'}>
         <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
       </Field>
       <Field label="НДС, ₽">

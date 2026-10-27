@@ -11,7 +11,8 @@ try {
   const db = openDatabase(file)
   const before = readResult(db)
   assert.equal(before.version, 1)
-  assert.equal(before.state.expenses.find((expense) => expense.id === 'e1')?.vehicleId, 'v1')
+  assert.equal(before.state.expenses.find((expense) => expense.id === 'e1')?.vehicleId, '')
+  assert.equal(before.state.expenses.find((expense) => expense.id === 'e1')?.category, 'fuel')
   assert.equal(before.state.expenses.find((expense) => expense.id === 'e8')?.category, 'platon')
   assert.equal(before.state.expenses.find((expense) => expense.id === 'e8')?.vehicleId, '')
   db.prepare(
@@ -22,6 +23,7 @@ try {
     `INSERT INTO expenses (id, trip_id, vehicle_id, date, category, amount, comment, position)
      VALUES ('e_manual_platon', '', 'v1', '2026-10-20', 'platon', 500, 'Ручной Платон', 101)`,
   ).run()
+  db.prepare(`UPDATE expenses SET vehicle_id = 'v1' WHERE id = 'e1'`).run()
   db.prepare(`UPDATE expenses SET vehicle_id = 'v1' WHERE id = 'e2'`).run()
   db.prepare(`UPDATE repairs SET vehicle_id = 'v4', odometer = 10 WHERE id = 'r4'`).run()
   db.close()
@@ -38,7 +40,7 @@ try {
   assert.equal(manual?.amount, 500)
   assert.equal(state.expenses.find((expense) => expense.id === 'e2')?.vehicleId, '')
   assert.equal(state.expenses.find((expense) => expense.id === 'e2')?.category, 'toll')
-  assert.equal(state.expenses.find((expense) => expense.id === 'e1')?.vehicleId, 'v1')
+  assert.equal(state.expenses.find((expense) => expense.id === 'e1')?.vehicleId, '')
   const parts = state.repairs.find((job) => job.id === 'r4')
   assert.equal(parts?.kind, 'parts')
   assert.equal(parts?.vehicleId, '')
@@ -78,14 +80,38 @@ try {
   assert.equal(taxed.state.expenses.find((expense) => expense.id === 'e2')?.vat ?? null, null)
   const fuel = saveExpense(third, {
     id: 'e_fuel',
-    vehicleId: '',
+    vehicleId: 'v1',
     tripId: '',
     date: '2026-10-21',
     category: 'fuel',
     amount: 100,
     comment: '',
   })
-  assert.equal(fuel.ok, false)
+  assert.equal(fuel.ok, true)
+  if (!fuel.ok) throw new Error('fuel')
+  assert.equal(fuel.state.expenses.find((expense) => expense.id === 'e_fuel')?.vehicleId, '')
+  const general = saveExpense(third, {
+    id: 'e_general',
+    vehicleId: '',
+    tripId: '',
+    date: '2026-10-21',
+    category: 'parking',
+    amount: 400,
+    comment: 'Стоянка',
+  })
+  assert.equal(general.ok, true)
+  if (!general.ok) throw new Error('general')
+  assert.equal(general.state.expenses.find((expense) => expense.id === 'e_general')?.vehicleId, '')
+  const missing = saveExpense(third, {
+    id: 'e_missing',
+    vehicleId: 'no-such',
+    tripId: '',
+    date: '2026-10-21',
+    category: 'driver',
+    amount: 100,
+    comment: '',
+  })
+  assert.equal(missing.ok, false)
   const job = saveRepair(third, {
     id: 'r_parts',
     vehicleId: 'v1',

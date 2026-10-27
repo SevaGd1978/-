@@ -5,7 +5,9 @@ import {
   dateRu,
   expenseCategories,
   expenseCategoryLabel,
+  expenseAllowsEmptyVehicle,
   expenseSkipsVehicle,
+  generalExpenseCategories,
   money,
   periodTitle,
   sharedExpenseCategories,
@@ -25,7 +27,10 @@ export function ExpensesPage() {
   const [category, setCategory] = useState<ExpenseCategory | 'all'>('all')
   const [vehicleId, setVehicleId] = useState('all')
   const [editor, setEditor] = useState<
-    { mode: 'vehicle'; expense?: TripExpense } | { mode: 'shared'; category: SharedExpenseCategory; expense?: TripExpense } | null
+    | { mode: 'vehicle'; expense?: TripExpense }
+    | { mode: 'shared'; category: SharedExpenseCategory; expense?: TripExpense }
+    | { mode: 'general'; expense?: TripExpense }
+    | null
   >(null)
   const [confirm, setConfirm] = useState<{ text: string; run: () => void } | null>(null)
 
@@ -48,6 +53,10 @@ export function ExpensesPage() {
   function openExpense(expense: TripExpense) {
     if (expenseSkipsVehicle(expense.category)) {
       setEditor({ mode: 'shared', category: expense.category as SharedExpenseCategory, expense })
+      return
+    }
+    if (!expense.vehicleId && expenseAllowsEmptyVehicle(expense.category)) {
+      setEditor({ mode: 'general', expense })
       return
     }
     setEditor({ mode: 'vehicle', expense })
@@ -75,6 +84,28 @@ export function ExpensesPage() {
             </article>
           )
         })}
+        {(() => {
+          const matched = state.expenses.filter(
+            (expense) =>
+              inPeriod(expense.date, period) &&
+              expense.vehicleId === '' &&
+              (generalExpenseCategories as readonly string[]).includes(expense.category),
+          )
+          const card = (
+            <>
+              <span>Общие</span>
+              <strong className="num">{money(sumExpenses(matched))}</strong>
+              <em>Без машины: дата, статья, сумма и НДС</em>
+            </>
+          )
+          return allowed ? (
+            <button type="button" className="kpi cost-card" onClick={() => setEditor({ mode: 'general' })}>
+              {card}
+            </button>
+          ) : (
+            <article className="kpi">{card}</article>
+          )
+        })()}
       </section>
       <div className="toolbar">
         <select aria-label="Период" value={period} onChange={(event) => setPeriod(event.target.value)}>
@@ -111,13 +142,12 @@ export function ExpensesPage() {
       {allowed ? null : <p className="hint">Просмотр. Менять расходы может тот, у кого есть это право.</p>}
       <p className="muted">
         Итого по фильтру: {money(sumExpenses(rows))}. Пустое поле НДС считает {VAT_PERCENT}% (на топливе ноль), вписанная сумма
-        записывается как есть. Карточки
-        «Платон», «Ремзона» и «Платные дороги» спрашивают дату, категорию и сумму, без машины. Топливо, суточные и погрузка — кнопка
-        «Добавить расход», там нужна машина.
+        записывается как есть. Карточки «Топливо», «Платон», «Ремзона» и «Платные дороги» не спрашивают машину. «Общие» — суточные,
+        зарплата, погрузка, стоянка и прочее, тоже без машины. Кнопка «Добавить расход» записывает такую статью на выбранный автомобиль.
       </p>
       <section className="card">
         {rows.length === 0 ? (
-          <Empty title="Расходов нет" text="Топливо и суточные — на машину. Платон и платные дороги — без машины." />
+          <Empty title="Расходов нет" text="Топливо и общие расходы можно записать без машины. Суточные и зарплату можно привязать к автомобилю." />
         ) : (
           <div className="table-wrap">
             <table>
@@ -175,13 +205,20 @@ export function ExpensesPage() {
       {editor ? (
         <Drawer
           title={
-            editor.expense ? 'Изменить расход' : editor.mode === 'shared' ? expenseCategoryLabel[editor.category] : 'Расход по машине'
+            editor.expense
+              ? 'Изменить расход'
+              : editor.mode === 'shared'
+                ? expenseCategoryLabel[editor.category]
+                : editor.mode === 'general'
+                  ? 'Общие'
+                  : 'Расход по машине'
           }
           onClose={() => setEditor(null)}
         >
-          {editor.mode === 'shared' ? (
+          {editor.mode === 'shared' || editor.mode === 'general' ? (
             <SharedExpenseForm
-              category={editor.category}
+              category={editor.mode === 'general' ? (editor.expense?.category ?? 'other') : editor.category}
+              categories={editor.mode === 'general' ? generalExpenseCategories : sharedExpenseCategories}
               initial={editor.expense}
               onCancel={() => setEditor(null)}
               onSubmit={async (expense) => {
