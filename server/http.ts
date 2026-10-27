@@ -16,6 +16,7 @@ import {
   userByToken,
 } from './accounts.ts'
 import {
+  checkpointDatabase,
   deleteDriver,
   deleteExpense,
   deletePayment,
@@ -155,6 +156,18 @@ async function handleApi(db: DatabaseSync, req: IncomingMessage, res: ServerResp
     }
     if (method === 'GET' && pathname === '/api/state') {
       sendJson(res, 200, readResult(db))
+      return
+    }
+    if (method === 'GET' && pathname === '/api/backup') {
+      if (!actor?.rights.includes('users')) return forbid(res)
+      const file = process.env.PUTEVOY_DB || (existsSync('/data') ? '/data/putevoy.sqlite' : 'data/putevoy.sqlite')
+      if (!existsSync(file)) return sendJson(res, 404, { error: 'Файл базы не найден' })
+      checkpointDatabase(db)
+      res.writeHead(200, {
+        'content-type': 'application/octet-stream',
+        'content-disposition': 'attachment; filename="putevoy.sqlite"',
+      })
+      createReadStream(file).pipe(res)
       return
     }
     if (method === 'POST' && pathname === '/api/reset') {
