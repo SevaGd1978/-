@@ -17,7 +17,7 @@
   --shadow: 0 12px 30px rgba(70, 46, 22, 0.06);
   --sans: "Times New Roman", Times, "Liberation Serif", serif;
   --display: "Times New Roman", Times, "Liberation Serif", serif;
-  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  --mono: ui-monospace, "Liberation Mono", "Courier New", monospace;
   color: var(--ink);
   background: var(--bg);
   font-family: var(--sans);
