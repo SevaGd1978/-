@@ -83,6 +83,10 @@ CREATE TABLE IF NOT EXISTS customers (
 );
 `
 
+export function checkpointDatabase(db: Sql) {
+  db.exec('PRAGMA wal_checkpoint(FULL)')
+}
+
 export function openDatabase(file: string): Sql {
   mkdirSync(dirname(file), { recursive: true })
   const db = new DatabaseSync(file)
