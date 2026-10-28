@@ -5,7 +5,7 @@
   "description": "Учёт рейсов, расходов ремзоны и оплат",
   "type": "module",
   "main": "desktop/main.cjs",
-  "author": "Путевой",
+  "author": "Putevoy",
   "scripts": {
     "dev": "node --experimental-sqlite --experimental-strip-types server/dev.ts",
     "start": "node --experimental-sqlite --experimental-strip-types server/index.ts",
@@ -18,7 +18,7 @@
   },
   "build": {
     "appId": "tech.amvera.putevoy",
-    "productName": "Путевой",
+    "productName": "Putevoy",
     "directories": {
       "output": "release"
     },
@@ -39,7 +39,8 @@
           ]
         }
       ],
-      "signAndEditExecutable": false
+      "signAndEditExecutable": false,
+      "electronLanguages": ["en", "ru"]
     },
     "nsis": {
       "oneClick": false,
@@ -52,6 +53,11 @@
       "icon": "desktop/icon.png",
       "category": "public.app-category.business",
       "identity": null,
+      "extendInfo": {
+        "CFBundleDisplayName": "Путевой",
+        "CFBundleName": "Путевой"
+      },
+      "electronLanguages": ["en", "ru"],
       "target": [
         {
           "target": "zip",
