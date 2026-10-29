@@ -179,7 +179,7 @@ export function Dashboard({ onOpenTrip }: { onOpenTrip: (id: string) => void }) 
           <section className="card">
             <div className="section-head">
               <h2>Расходы</h2>
-              <span className="muted">кроме топлива, с НДС {VAT_PERCENT}%</span>
+              <span className="muted">с НДС {VAT_PERCENT}%</span>
             </div>
             {byCategory.length === 0 ? (
               <Empty title="За период расходов нет" />

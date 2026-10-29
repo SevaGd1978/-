@@ -675,6 +675,7 @@ input[readonly] { background: #f6f1ea; }
 }
 .trip-spend-lines .num { white-space: nowrap; }
 .trip-spend-lines .num small { display: block; }
+.trip-spend-note { margin: 0; color: #4e463f; font-size: 13px; }
 .trip-spend-total { font-weight: 700; }
 .card > .trip-spend { border-top: 0; padding-top: 0; }
 .trip-sums {

@@ -116,7 +116,6 @@ export function expenseEntryHint(category: string, amount: number | null, manual
     if (amount == null || amount <= 0) return `НДС ${money(manual)} запишется как введён.`
     return `К учёту ${money(expenseWithVat(category, amount, manual))}, в том числе НДС ${money(manual)}.`
   }
-  if (category === 'fuel') return 'Пустое поле НДС оставляет топливо без налога. Свою сумму можно вписать.'
   if (amount == null || amount <= 0) return `Пустое поле НДС посчитает ${VAT_PERCENT}%. Свою сумму можно вписать.`
   return `К учёту ${money(expenseWithVat(category, amount))}, в том числе НДС ${VAT_PERCENT}%. Свою сумму можно вписать.`
 }

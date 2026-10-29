@@ -13,6 +13,8 @@ import {
   repairCost,
   round2,
   sumExpenses,
+  tripDistanceKm,
+  tripSalary,
 } from './calc.ts'
 import type { Trip } from './types.ts'
 
@@ -92,8 +94,14 @@ assert.equal(parseMoney('1 200,50'), 1200.5)
 assert.equal(parseMoney('0'), 0)
 assert.equal(parseMoney('-5'), null)
 assert.equal(parseMoney(''), null)
-assert.equal(expenseVat('fuel', 18500), 0)
-assert.equal(expenseWithVat('fuel', 18500), 18500)
+assert.equal(expenseVat('fuel', 18500), 4070)
+assert.equal(expenseWithVat('fuel', 18500), 22570)
+assert.equal(tripDistanceKm({ odometerStart: 812400, odometerEnd: 813100 }), 700)
+assert.equal(tripSalary({ odometerStart: 812400, odometerEnd: 813100 }), 7000)
+assert.equal(tripSalary({ odometerStart: 220400, odometerEnd: 220400 }), 0)
+assert.equal(tripSalary({ odometerStart: 812400, odometerEnd: null }), null)
+assert.equal(tripSalary({ odometerStart: null, odometerEnd: 813100 }), null)
+assert.equal(tripDistanceKm({ odometerStart: 813100, odometerEnd: 812400 }), null)
 assert.equal(expenseVat('toll', 2400), 528)
 assert.equal(expenseWithVat('toll', 2400), 2928)
 assert.equal(expenseWithVat('salary', 100), 122)
@@ -111,7 +119,7 @@ assert.equal(
     { category: 'toll', amount: 2400 },
     { category: 'driver', amount: 6000 },
   ]),
-  28748,
+  32818,
 )
 
 console.log('calc ok')

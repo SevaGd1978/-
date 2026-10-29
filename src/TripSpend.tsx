@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from './auth'
-import { expenseWithVat, parseMoney, sumExpenses } from './calc'
-import { dateRu, expenseEntryHint, expenseSkipsVehicle, money, todayIso } from './format'
+import { expenseWithVat, parseMoney, round2, sumExpenses, tripDistanceKm, tripSalary, SALARY_PER_KM } from './calc'
+import { dateRu, expenseEntryHint, expenseSkipsVehicle, kmReading, money, todayIso } from './format'
 import { uid, useData } from './store'
 import type { ExpenseCategory, Trip, TripExpense } from './types'
 import { ConfirmDialog, Drawer, ExpenseAmount, Field, FormError, FormFooter } from './ui'
@@ -19,13 +19,30 @@ export function TripSpend({ trip }: { trip: Trip }) {
   const allowed = can('expenses')
   const [editor, setEditor] = useState<{ category: ExpenseCategory; expense?: TripExpense } | null>(null)
   const [confirm, setConfirm] = useState<{ text: string; run: () => void } | null>(null)
-  const rows = state.expenses.filter((expense) => expense.tripId === trip.id)
+  const rows = state.expenses.filter((expense) => expense.tripId === trip.id && expense.category !== 'salary')
   const shown = rows.filter((expense) => spendCategories.some((item) => item.id === expense.category))
+  const distance = tripDistanceKm(trip)
+  const salary = tripSalary(trip)
 
   return (
     <section className="trip-spend" aria-label="Расходы рейса">
       <h3>Расходы</h3>
       {spendCategories.map((item) => {
+        if (item.id === 'salary') {
+          return (
+            <div key={item.id} className="trip-spend-cat">
+              <div className="trip-spend-head">
+                <span>{item.label}</span>
+                <strong className="num">{salary == null ? '—' : money(salary)}</strong>
+              </div>
+              <p className="trip-spend-note">
+                {distance == null
+                  ? 'Нужны показания одометра в начале и в конце.'
+                  : `${kmReading(distance)} км × ${SALARY_PER_KM} ₽`}
+              </p>
+            </div>
+          )
+        }
         const lines = shown
           .filter((expense) => expense.category === item.id)
           .sort((a, b) => b.date.localeCompare(a.date))
@@ -68,7 +85,7 @@ export function TripSpend({ trip }: { trip: Trip }) {
       })}
       <div className="trip-spend-head trip-spend-total">
         <span>Итого</span>
-        <strong className="num">{money(sumExpenses(shown))}</strong>
+        <strong className="num">{money(round2(sumExpenses(shown) + (salary ?? 0)))}</strong>
       </div>
       {editor ? (
         <Drawer
@@ -177,7 +194,7 @@ function SpendForm({
       <Field label="Дата">
         <input type="date" value={date} onChange={(event) => setDate(event.target.value)} required autoFocus />
       </Field>
-      <Field label={category === 'fuel' ? 'Сумма, ₽' : 'Сумма без НДС, ₽'}>
+      <Field label="Сумма без НДС, ₽">
         <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
       </Field>
       <Field label="НДС, ₽">

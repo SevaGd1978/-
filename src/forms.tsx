@@ -325,7 +325,7 @@ export function ExpenseForm({
           ))}
         </select>
       </Field>
-      <Field label={category === 'fuel' ? 'Сумма, ₽' : 'Сумма без НДС, ₽'}>
+      <Field label="Сумма без НДС, ₽">
         <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
       </Field>
       <Field label="НДС, ₽">
@@ -414,7 +414,7 @@ export function SharedExpenseForm({
           ))}
         </select>
       </Field>
-      <Field label={picked === 'fuel' ? 'Сумма, ₽' : 'Сумма без НДС, ₽'}>
+      <Field label="Сумма без НДС, ₽">
         <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
       </Field>
       <Field label="НДС, ₽">
