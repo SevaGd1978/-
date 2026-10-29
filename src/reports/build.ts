@@ -390,12 +390,12 @@ function tripSection(state: State, from: string, to: string): ReportSection {
     column('Ставка', 'right', 14, 'money'),
     column('Оплачено', 'right', 14, 'money'),
     column('Долг', 'right', 14, 'money'),
+    column('Расходы', 'right', 14, 'money'),
     column('Топливо', 'right', 14, 'money'),
     column('Платные дороги', 'right', 16, 'money'),
     column('Платон', 'right', 14, 'money'),
     column('Прочие расходы', 'right', 16, 'money'),
     column('Зарплата', 'right', 14, 'money'),
-    column('Расходы', 'right', 14, 'money'),
   ]
   const rows = state.trips
     .filter((trip) => inRange(trip.date, from, to))
@@ -418,12 +418,12 @@ function tripSection(state: State, from: string, to: string): ReportSection {
         trip.rate,
         economics.paid,
         economics.debt,
+        costs.spend,
         costs.fuel,
         costs.toll,
         costs.platon,
         costs.other,
         costs.salary,
-        costs.spend,
       ]
     })
   return { title: 'Рейсы', columns, rows, totals: totalRow(rows, columns) }
