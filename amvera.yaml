@@ -7,7 +7,9 @@ meta:
 build:
   # Vite and TypeScript are devDependencies. Amvera's first install skips them
   # when NODE_ENV=production, so install them again before the client build.
-  additionalCommands: npm install --include=dev && npm run build
+  # Electron is only for the desktop installers. Skip its binary so the web build
+  # does not download it.
+  additionalCommands: ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm install --include=dev && npm run build
 
 run:
   command: PORT=3000 npm run start
