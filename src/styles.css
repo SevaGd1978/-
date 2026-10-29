@@ -519,27 +519,34 @@ input[readonly] { background: #f6f1ea; }
   align-items: start;
 }
 .trip-board > .card { min-width: 0; }
-.trip-board > .card:first-child { padding: 8px 6px 4px; }
-.trip-sheet { font-size: 13px; line-height: 1.2; width: 100%; overflow-x: auto; }
+.trip-board > .card:first-child { padding: 10px 10px 6px; }
+.trip-sheet { font-size: 15px; line-height: 1.25; width: 100%; overflow-x: auto; }
 .trip-row {
   display: grid;
-  grid-template-columns: 18px max-content minmax(0, 1.05fr) minmax(0, 1.7fr) max-content minmax(0, 1fr) max-content max-content max-content;
+  grid-template-columns: 22px 7.6em minmax(11em, 1.15fr) minmax(16em, 1.7fr) max-content minmax(9em, 1fr) 5.2em max-content 7.4em;
   align-items: center;
-  column-gap: 10px;
-  min-width: 880px;
-  padding: 4px 2px;
+  column-gap: 8px;
+  min-width: 980px;
+  padding: 9px 8px 10px;
 }
-.trip-cell { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.trip-cell { display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; }
+.trip-main { color: var(--ink); font-weight: 700; }
+.trip-sub { color: #4e463f; font-size: 13px; font-weight: 500; line-height: 1.25; }
 .trip-sheet .trip-money { text-align: right; align-items: flex-end; }
 .trip-head {
   color: var(--muted);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  border-bottom: 1px solid var(--line);
+  background: #f3ebe3;
+  border-bottom: 1px solid #d9cbbd;
   cursor: default;
+  padding-top: 6px;
+  padding-bottom: 6px;
 }
+.trip-head .trip-main { color: var(--ink); font-size: 11px; font-weight: 700; }
+.trip-head .trip-sub { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: 0.03em; }
 .trip-blank { visibility: hidden; }
 .trip-clip {
   min-width: 0;
@@ -547,17 +554,34 @@ input[readonly] { background: #f6f1ea; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.trip-pair { border-bottom: 1px solid var(--line); cursor: pointer; }
+.trip-odo {
+  display: grid;
+  grid-template-columns: 6.5em 1em 6.5em;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+.trip-odo > span:first-child { text-align: right; }
+.trip-odo > span:last-child { text-align: left; }
+.trip-odo-arrow { color: #8a7b6e; text-align: center; }
+.trip-pair {
+  border-bottom: 1px solid #e4d3c2;
+  cursor: pointer;
+}
+.trip-pair:nth-child(even) { background: #fffdf9; }
+.trip-pair:nth-child(odd) { background: #f3e7d8; }
 @media (max-width: 1360px) {
   .shell:has(.content[data-page='trips']) .main { padding-left: 8px; padding-right: 8px; }
-  .trip-sheet { font-size: 12px; }
-  .trip-row { column-gap: 8px; }
+  .trip-sheet { font-size: 14px; }
+  .trip-sub { font-size: 12px; }
+  .trip-row { column-gap: 10px; padding: 7px 6px; }
 }
 .trip-sheet .num,
-.trip-sheet .trip-no { font-family: "Times New Roman", Times, serif; }
-.trip-sheet .badge { padding: 0 4px; font-size: 12px; font-weight: 700; line-height: 1.25; }
+.trip-sheet .trip-no { font-family: "Times New Roman", Times, serif; font-variant-numeric: tabular-nums; }
+.trip-sheet .trip-no { font-size: 16px; }
+.trip-sheet .badge { padding: 1px 6px; font-size: 12px; font-weight: 700; line-height: 1.35; }
 @media (max-width: 1360px) {
-  .trip-sheet .badge { font-size: 11px; padding: 0 3px; }
+  .trip-sheet .badge { font-size: 12px; padding: 1px 5px; }
+  .trip-sheet .trip-no { font-size: 15px; }
 }
 .pay-col { width: 18px; text-align: center; }
 .trip-sheet .pay-when { font-variant-numeric: tabular-nums; }
@@ -590,7 +614,8 @@ input[readonly] { background: #f6f1ea; }
 .trip-actions { display: flex; gap: 8px; }
 .trip-actions .btn { flex: 1 1 0; }
 .trip-sheet .is-cancelled { opacity: 0.72; }
-.trip-sheet .is-overdue { color: var(--bad); font-weight: 700; }
+.trip-sheet .is-overdue,
+.trip-sheet .is-overdue .trip-sub { color: var(--bad); font-weight: 700; }
 .trip-side .btn { width: 100%; }
 .trip-side .trip-actions .btn { width: auto; }
 .fines-sts { width: 150px; max-width: 100%; }

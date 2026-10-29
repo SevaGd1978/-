@@ -140,38 +140,38 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
                   <span className="sr">Оплата</span>
                 </span>
                 <span className="trip-cell">
-                  <span>Дата</span>
-                  <span>Дата оплаты</span>
+                  <span className="trip-main">Дата</span>
+                  <span className="trip-sub">Дата оплаты</span>
                 </span>
                 <span className="trip-cell">
-                  <span>Номер</span>
-                  <span>Заказчик</span>
+                  <span className="trip-main">Номер</span>
+                  <span className="trip-sub">Заказчик</span>
                 </span>
                 <span className="trip-cell">
-                  <span>Маршрут</span>
-                  <span>Одометр, км</span>
+                  <span className="trip-main">Маршрут</span>
+                  <span className="trip-sub">Одометр, км</span>
                 </span>
                 <span className="trip-cell">
-                  <span>Машина</span>
-                  <span>Сумма</span>
+                  <span className="trip-main">Машина</span>
+                  <span className="trip-sub">Сумма</span>
                 </span>
                 <span className="trip-cell">
-                  <span>Водитель</span>
-                  <span>Оплачено</span>
+                  <span className="trip-main">Водитель</span>
+                  <span className="trip-sub">Оплачено</span>
                 </span>
                 <span className="trip-cell trip-money">
-                  <span>Км</span>
-                  <span>%</span>
+                  <span className="trip-main">Км</span>
+                  <span className="trip-sub">%</span>
                 </span>
                 <span className="trip-cell">
-                  <span>Состояние</span>
-                  <span>Срок</span>
+                  <span className="trip-main">Состояние</span>
+                  <span className="trip-sub">Срок</span>
                 </span>
                 <span className="trip-cell trip-money">
-                  <span className="trip-blank" aria-hidden="true">
+                  <span className="trip-main trip-blank" aria-hidden="true">
                     .
                   </span>
-                  <span>К оплате</span>
+                  <span className="trip-sub">К оплате</span>
                 </span>
               </div>
               {rows.map((row) => {
@@ -190,15 +190,15 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
                       <PayDot status={row.trip.status} rate={row.trip.rate} paid={row.paid} />
                     </span>
                     <span className="trip-cell">
-                      <span>{dateRu(row.trip.date)}</span>
-                      <span className="pay-when" title={row.paidOn ? 'Дата последнего поступления' : 'Оплат ещё нет'}>
+                      <span className="trip-main">{dateRu(row.trip.date)}</span>
+                      <span className="trip-sub pay-when" title={row.paidOn ? 'Дата последнего поступления' : 'Оплат ещё нет'}>
                         {row.paidOn ? dateRu(row.paidOn) : '—'}
                       </span>
                     </span>
                     <span className="trip-cell">
                       <button
                         type="button"
-                        className="linkish trip-no"
+                        className="linkish trip-no trip-main"
                         onClick={(event) => {
                           event.stopPropagation()
                           onOpen(row.trip.id)
@@ -206,45 +206,49 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
                       >
                         {row.trip.number}
                       </button>
-                      <span className="trip-clip" title={row.trip.customer}>
+                      <span className="trip-sub trip-clip" title={row.trip.customer}>
                         {row.trip.customer}
                       </span>
                     </span>
                     <span className="trip-cell">
-                      <span className="trip-clip" title={route}>
+                      <span className="trip-main trip-clip" title={route}>
                         {route}
                       </span>
-                      <span className="num" title="Показание одометра в начале и в конце рейса">
-                        {kmReading(row.trip.odometerStart)} → {kmReading(row.trip.odometerEnd)}
+                      <span className="trip-sub trip-odo" title="Показание одометра в начале и в конце рейса">
+                        <span>{kmReading(row.trip.odometerStart)}</span>
+                        <span className="trip-odo-arrow" aria-hidden="true">
+                          →
+                        </span>
+                        <span>{kmReading(row.trip.odometerEnd)}</span>
                       </span>
                     </span>
                     <span className="trip-cell">
-                      <span className="trip-clip" title={vehicleTitle}>
+                      <span className="trip-main trip-clip" title={vehicleTitle}>
                         {row.vehicle?.plate || '—'}
                       </span>
-                      <span className="num">{money(row.trip.rate)}</span>
+                      <span className="trip-sub num">{money(row.trip.rate)}</span>
                     </span>
                     <span className="trip-cell">
-                      <span className="trip-clip" title={row.driver?.name}>
+                      <span className="trip-main trip-clip" title={row.driver?.name}>
                         {row.driver?.name || '—'}
                       </span>
-                      <span className="num">{money(row.paid)}</span>
+                      <span className="trip-sub num">{money(row.paid)}</span>
                     </span>
                     <span className="trip-cell trip-money">
-                      <span className="num">{roadKm(routes[legKey(row.trip.from, row.trip.to)], ready)}</span>
-                      <span className="num">{payPercent(row.trip.rate, row.paid)}</span>
+                      <span className="trip-main num">{roadKm(routes[legKey(row.trip.from, row.trip.to)], ready)}</span>
+                      <span className="trip-sub num">{payPercent(row.trip.rate, row.paid)}</span>
                     </span>
                     <span className="trip-cell">
                       <Badge tone={tripTone(row.trip.status)}>{tripStatusLabel[row.trip.status]}</Badge>
-                      <span className={row.overdue ? 'is-overdue' : undefined}>
+                      <span className={row.overdue ? 'trip-sub is-overdue' : 'trip-sub'}>
                         {row.trip.payDue ? dateRu(row.trip.payDue) : '—'}
                       </span>
                     </span>
                     <span className={row.debt > 0 ? 'trip-cell trip-money is-overdue' : 'trip-cell trip-money'}>
-                      <span className="trip-blank" aria-hidden="true">
+                      <span className="trip-main trip-blank" aria-hidden="true">
                         .
                       </span>
-                      <span className="num">{money(row.debt)}</span>
+                      <span className="trip-sub num">{money(row.debt)}</span>
                     </span>
                   </div>
                 )
