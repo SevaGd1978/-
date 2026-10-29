@@ -26,10 +26,14 @@ function rowNumber(rows: (string | number | null)[][], marker: string, index: nu
 
 const trips = section('trips')
 assert.equal(trips.section.rows.length, 6)
-assert.equal(rowNumber(trips.section.rows, 'Р-1034', 9), 86000)
-assert.equal(rowNumber(trips.section.rows, 'Р-1034', 10), 20000)
-assert.equal(rowNumber(trips.section.rows, 'Р-1034', 11), 66000)
-assert.deepEqual(trips.section.totals?.slice(9), [403000, 144000, 220000])
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 8), 812400)
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 9), null)
+assert.equal(rowNumber(trips.section.rows, 'Р-1035', 8), 640100)
+assert.equal(rowNumber(trips.section.rows, 'Р-1035', 9), 640880)
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 11), 86000)
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 12), 20000)
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 13), 66000)
+assert.deepEqual(trips.section.totals?.slice(11), [403000, 144000, 220000])
 
 const expenses = section('expenses')
 assert.equal(expenses.section.rows.length, 12)

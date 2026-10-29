@@ -62,6 +62,8 @@ export function TripForm({
   const [payDue, setPayDue] = useState(initial?.payDue ?? '')
   const [status, setStatus] = useState(initial?.status ?? 'planned')
   const [note, setNote] = useState(initial?.note ?? '')
+  const [odometerStart, setOdometerStart] = useState(initial?.odometerStart != null ? String(initial.odometerStart) : '')
+  const [odometerEnd, setOdometerEnd] = useState(initial?.odometerEnd != null ? String(initial.odometerEnd) : '')
   const [error, setError] = useState('')
 
   function submit(event: FormEvent) {
@@ -88,6 +90,24 @@ export function TripForm({
       setError('Выберите статус рейса.')
       return
     }
+    const startReading = parseOdometer(odometerStart.replace(/\s/g, ''))
+    const endReading = parseOdometer(odometerEnd.replace(/\s/g, ''))
+    if ((odometerStart.trim() && startReading === null) || (odometerEnd.trim() && endReading === null)) {
+      setError('Показание одометра укажите целым числом километров.')
+      return
+    }
+    if (startReading != null && startReading > 10_000_000) {
+      setError('Показание одометра в начале рейса слишком большое.')
+      return
+    }
+    if (endReading != null && endReading > 10_000_000) {
+      setError('Показание одометра в конце рейса слишком большое.')
+      return
+    }
+    if (startReading != null && endReading != null && endReading < startReading) {
+      setError('В конце рейса показание одометра не может быть меньше, чем в начале.')
+      return
+    }
     onSubmit({
       id: initial?.id || uid('t'),
       number: number.trim(),
@@ -103,6 +123,8 @@ export function TripForm({
       payDue,
       status,
       note: note.trim(),
+      odometerStart: startReading,
+      odometerEnd: endReading,
     })
   }
 
@@ -163,6 +185,22 @@ export function TripForm({
           ))}
         </select>
       </Field>
+      <Field label="Одометр в начале, км">
+        <input
+          inputMode="numeric"
+          value={odometerStart}
+          onChange={(event) => setOdometerStart(event.target.value)}
+          placeholder="Необязательно"
+        />
+      </Field>
+      <Field label="Одометр в конце, км">
+        <input
+          inputMode="numeric"
+          value={odometerEnd}
+          onChange={(event) => setOdometerEnd(event.target.value)}
+          placeholder="Необязательно"
+        />
+      </Field>
       <Field label="Комментарий" wide>
         <textarea value={note} onChange={(event) => setNote(event.target.value)} />
       </Field>
@@ -189,7 +227,7 @@ export function CopyTripDrawer({
     <Drawer title={`Копия ${source.number}`} onClose={onClose}>
       <p className="hint">
         Новый рейс по образцу {source.number}: маршрут, заказчик, груз, машина, водитель и ставка. Номер {draft.number},
-        дата сегодня, статус «Запланирован». Оплаты исходного рейса остаются на нём. Топливо, Платон и платные дороги
+        дата сегодня, статус «Запланирован». Оплаты и показания одометра исходного рейса остаются на нём. Топливо, Платон и платные дороги
         записываются отдельно, без машины. Суточные и прочие затраты можно провести по машине или в общие расходы.
       </p>
       <TripForm

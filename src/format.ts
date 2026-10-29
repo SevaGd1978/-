@@ -137,6 +137,11 @@ export function tons(value: number) {
   return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 }).format(value)} т`
 }
 
+export function kmReading(value: number | null) {
+  if (value == null) return '—'
+  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value)
+}
+
 export function todayIso() {
   const now = new Date()
   const month = String(now.getMonth() + 1).padStart(2, '0')

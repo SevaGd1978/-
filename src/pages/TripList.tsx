@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { debtOf, isOverdue, payMark, sumAmounts } from '../calc'
 import {
   dateRu,
+  kmReading,
   money,
   todayIso,
   tripStatusLabel,
@@ -71,6 +72,8 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
           row.driver?.name ?? '',
           row.vehicle?.plate ?? '',
           row.vehicle?.model ?? '',
+          row.trip.odometerStart == null ? '' : String(row.trip.odometerStart),
+          row.trip.odometerEnd == null ? '' : String(row.trip.odometerEnd),
         ]
           .join(' ')
           .toLowerCase()
@@ -131,83 +134,121 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
       ) : (
         <div className="trip-board">
           <section className="card">
-            <div className="table-wrap">
-              <table className="trip-sheet">
-                <thead>
-                  <tr>
-                    <th className="pay-col" title="Красный — не оплачен, жёлтый — частично, зелёный — оплачен">
-                      <span className="sr">Оплата</span>
-                    </th>
-                    <th>Дата</th>
-                    <th>Дата оплаты</th>
-                    <th>Номер</th>
-                    <th>Маршрут</th>
-                    <th>Машина</th>
-                    <th>Водитель</th>
-                    <th className="num">Км</th>
-                    <th>Состояние</th>
-                    <th>Заказчик</th>
-                    <th className="num">Сумма</th>
-                    <th className="num">Оплачено</th>
-                    <th className="num">% оплаты</th>
-                    <th>Срок</th>
-                    <th className="num">К оплате</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => {
-                    const active = selected?.trip.id === row.trip.id
-                    return (
-                      <tr
-                        key={row.trip.id}
-                        className={row.trip.status === 'cancelled' ? 'is-cancelled' : undefined}
-                        aria-selected={active}
-                        onClick={() => setSelectedId(row.trip.id)}
-                        onDoubleClick={() => onOpen(row.trip.id)}
+            <div className="trip-sheet">
+              <div className="trip-row trip-head">
+                <span className="pay-col" title="Красный — не оплачен, жёлтый — частично, зелёный — оплачен">
+                  <span className="sr">Оплата</span>
+                </span>
+                <span className="trip-cell">
+                  <span>Дата</span>
+                  <span>Дата оплаты</span>
+                </span>
+                <span className="trip-cell">
+                  <span>Номер</span>
+                  <span>Заказчик</span>
+                </span>
+                <span className="trip-cell">
+                  <span>Маршрут</span>
+                  <span>Одометр, км</span>
+                </span>
+                <span className="trip-cell">
+                  <span>Машина</span>
+                  <span>Сумма</span>
+                </span>
+                <span className="trip-cell">
+                  <span>Водитель</span>
+                  <span>Оплачено</span>
+                </span>
+                <span className="trip-cell trip-money">
+                  <span>Км</span>
+                  <span>%</span>
+                </span>
+                <span className="trip-cell">
+                  <span>Состояние</span>
+                  <span>Срок</span>
+                </span>
+                <span className="trip-cell trip-money">
+                  <span className="trip-blank" aria-hidden="true">
+                    .
+                  </span>
+                  <span>К оплате</span>
+                </span>
+              </div>
+              {rows.map((row) => {
+                const active = selected?.trip.id === row.trip.id
+                const route = `${row.trip.from} — ${row.trip.to}`
+                const vehicleTitle = row.vehicle ? `${row.vehicle.plate} · ${row.vehicle.model}` : undefined
+                return (
+                  <div
+                    key={row.trip.id}
+                    className={row.trip.status === 'cancelled' ? 'trip-row trip-pair is-cancelled' : 'trip-row trip-pair'}
+                    aria-selected={active}
+                    onClick={() => setSelectedId(row.trip.id)}
+                    onDoubleClick={() => onOpen(row.trip.id)}
+                  >
+                    <span className="pay-col">
+                      <PayDot status={row.trip.status} rate={row.trip.rate} paid={row.paid} />
+                    </span>
+                    <span className="trip-cell">
+                      <span>{dateRu(row.trip.date)}</span>
+                      <span className="pay-when" title={row.paidOn ? 'Дата последнего поступления' : 'Оплат ещё нет'}>
+                        {row.paidOn ? dateRu(row.paidOn) : '—'}
+                      </span>
+                    </span>
+                    <span className="trip-cell">
+                      <button
+                        type="button"
+                        className="linkish trip-no"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          onOpen(row.trip.id)
+                        }}
                       >
-                        <td className="pay-col">
-                          <PayDot status={row.trip.status} rate={row.trip.rate} paid={row.paid} />
-                        </td>
-                        <td>{dateRu(row.trip.date)}</td>
-                        <td className="pay-when" title={row.paidOn ? 'Дата последнего поступления' : 'Оплат ещё нет'}>
-                          {row.paidOn ? dateRu(row.paidOn) : '—'}
-                        </td>
-                        <td>
-                          <button
-                            type="button"
-                            className="linkish trip-no"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              onOpen(row.trip.id)
-                            }}
-                          >
-                            {row.trip.number}
-                          </button>
-                        </td>
-                        <td>
-                          {row.trip.from} — {row.trip.to}
-                        </td>
-                        <td title={row.vehicle ? `${row.vehicle.plate} · ${row.vehicle.model}` : undefined}>
-                          {row.vehicle?.plate || '—'}
-                        </td>
-                        <td>{row.driver?.name || '—'}</td>
-                        <td className="num">{roadKm(routes[legKey(row.trip.from, row.trip.to)], ready)}</td>
-                        <td>
-                          <Badge tone={tripTone(row.trip.status)}>{tripStatusLabel[row.trip.status]}</Badge>
-                        </td>
-                        <td>{row.trip.customer}</td>
-                        <td className="num">{money(row.trip.rate)}</td>
-                        <td className="num">{money(row.paid)}</td>
-                        <td className="num">{payPercent(row.trip.rate, row.paid)}</td>
-                        <td className={row.overdue ? 'is-overdue' : undefined}>
-                          {row.trip.payDue ? dateRu(row.trip.payDue) : '—'}
-                        </td>
-                        <td className={row.debt > 0 ? 'num is-overdue' : 'num'}>{money(row.debt)}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+                        {row.trip.number}
+                      </button>
+                      <span className="trip-clip" title={row.trip.customer}>
+                        {row.trip.customer}
+                      </span>
+                    </span>
+                    <span className="trip-cell">
+                      <span className="trip-clip" title={route}>
+                        {route}
+                      </span>
+                      <span className="num" title="Показание одометра в начале и в конце рейса">
+                        {kmReading(row.trip.odometerStart)} → {kmReading(row.trip.odometerEnd)}
+                      </span>
+                    </span>
+                    <span className="trip-cell">
+                      <span className="trip-clip" title={vehicleTitle}>
+                        {row.vehicle?.plate || '—'}
+                      </span>
+                      <span className="num">{money(row.trip.rate)}</span>
+                    </span>
+                    <span className="trip-cell">
+                      <span className="trip-clip" title={row.driver?.name}>
+                        {row.driver?.name || '—'}
+                      </span>
+                      <span className="num">{money(row.paid)}</span>
+                    </span>
+                    <span className="trip-cell trip-money">
+                      <span className="num">{roadKm(routes[legKey(row.trip.from, row.trip.to)], ready)}</span>
+                      <span className="num">{payPercent(row.trip.rate, row.paid)}</span>
+                    </span>
+                    <span className="trip-cell">
+                      <Badge tone={tripTone(row.trip.status)}>{tripStatusLabel[row.trip.status]}</Badge>
+                      <span className={row.overdue ? 'is-overdue' : undefined}>
+                        {row.trip.payDue ? dateRu(row.trip.payDue) : '—'}
+                      </span>
+                    </span>
+                    <span className={row.debt > 0 ? 'trip-cell trip-money is-overdue' : 'trip-cell trip-money'}>
+                      <span className="trip-blank" aria-hidden="true">
+                        .
+                      </span>
+                      <span className="num">{money(row.debt)}</span>
+                    </span>
+                  </div>
+                )
+              })}
             </div>
           </section>
           <aside className="card trip-side" aria-label="Карточка рейса">
@@ -226,6 +267,8 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
                   }
                   driver={selected.driver?.name ?? 'Водитель не указан'}
                   phone={selected.driver?.phone || 'Телефон не указан'}
+                  odometerStart={selected.trip.odometerStart}
+                  odometerEnd={selected.trip.odometerEnd}
                   rate={selected.trip.rate}
                   paid={selected.paid}
                   debt={selected.debt}
@@ -278,6 +321,8 @@ function TripCard({
   vehicle,
   driver,
   phone,
+  odometerStart,
+  odometerEnd,
   rate,
   paid,
   debt,
@@ -295,6 +340,8 @@ function TripCard({
   vehicle: string
   driver: string
   phone: string
+  odometerStart: number | null
+  odometerEnd: number | null
   rate: number
   paid: number
   debt: number
@@ -341,6 +388,12 @@ function TripCard({
         <div>
           <dt>Телефон</dt>
           <dd>{phone}</dd>
+        </div>
+        <div>
+          <dt>Одометр</dt>
+          <dd>
+            {kmReading(odometerStart)} → {kmReading(odometerEnd)}
+          </dd>
         </div>
       </dl>
       <ul className="trip-sums">

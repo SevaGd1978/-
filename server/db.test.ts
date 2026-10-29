@@ -4,14 +4,53 @@ import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { AddressInfo } from 'node:net'
+import { DatabaseSync } from 'node:sqlite'
 import { createSeed } from '../src/seed.ts'
-import { deleteTrip, deleteVehicle, openDatabase, resetDemo, saveExpense, saveTrip } from './db.ts'
+import { deleteTrip, deleteVehicle, openDatabase, readResult, resetDemo, saveExpense, saveTrip } from './db.ts'
 import { handleRequest } from './http.ts'
+
+const legacyDir = mkdtempSync(join(tmpdir(), 'putevoy-legacy-'))
+const legacyFile = join(legacyDir, 'old.sqlite')
+const legacy = new DatabaseSync(legacyFile)
+legacy.exec(`
+  CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
+  CREATE TABLE trips (
+    id TEXT PRIMARY KEY,
+    number TEXT NOT NULL,
+    date TEXT NOT NULL,
+    from_city TEXT NOT NULL,
+    to_city TEXT NOT NULL,
+    vehicle_id TEXT NOT NULL,
+    driver_id TEXT NOT NULL,
+    customer TEXT NOT NULL,
+    cargo TEXT NOT NULL,
+    weight_tons REAL NOT NULL,
+    rate REAL NOT NULL,
+    pay_due TEXT NOT NULL,
+    status TEXT NOT NULL,
+    note TEXT NOT NULL,
+    position INTEGER NOT NULL
+  );
+  INSERT INTO meta (key, value) VALUES ('seeded', '1'), ('version', '4');
+  INSERT INTO trips (
+    id, number, date, from_city, to_city, vehicle_id, driver_id, customer, cargo,
+    weight_tons, rate, pay_due, status, note, position
+  ) VALUES ('t_old', 'Р-1', '2026-10-01', 'Казань', 'Пермь', 'v1', 'd1', 'Заказчик', 'Труба', 1, 1000, '', 'planned', '', 1);
+`)
+legacy.close()
 
 const dir = mkdtempSync(join(tmpdir(), 'putevoy-db-'))
 const file = join(dir, 'putevoy.sqlite')
 
 try {
+  const migrated = openDatabase(legacyFile)
+  const oldTrip = readResult(migrated).state.trips.find((item) => item.id === 't_old')
+  assert.equal(oldTrip?.odometerStart, null)
+  assert.equal(oldTrip?.odometerEnd, null)
+  const columns = migrated.prepare(`PRAGMA table_info(trips)`).all() as { name: string }[]
+  assert.equal(columns.some((column) => column.name === 'odometer_start'), true)
+  assert.equal(columns.some((column) => column.name === 'odometer_end'), true)
+
   const db = openDatabase(file)
   const seed = createSeed()
   const first = db.prepare(`SELECT value FROM meta WHERE key = 'version'`).get() as { value: string }
@@ -44,6 +83,18 @@ try {
   assert.equal(saved.version, 2)
   assert.equal(saved.state.customers.includes('ООО «Теплосеть»'), true)
   const named = saveTrip(opened, { ...seed.trips[0], id: 't_customer', number: 'Р-2001', customer: 'ЗАО «Север»' })
+  const withReading = saveTrip(opened, {
+    ...seed.trips[0],
+    id: 't_odo',
+    number: 'Р-2002',
+    odometerStart: 812400,
+    odometerEnd: 813050,
+  })
+  assert.equal(withReading.ok, true)
+  if (!withReading.ok) throw new Error('odometer')
+  const stored = withReading.state.trips.find((item) => item.id === 't_odo')
+  assert.equal(stored?.odometerStart, 812400)
+  assert.equal(stored?.odometerEnd, 813050)
   assert.equal(named.ok, true)
   if (!named.ok) throw new Error('customer')
   assert.equal(named.state.customers.includes('ЗАО «Север»'), true)
@@ -119,6 +170,24 @@ try {
   })
   assert.equal(bad.status, 400)
 
+  const backwards = await fetch(`${base}/api/trips`, {
+    method: 'POST',
+    headers: auth,
+    body: JSON.stringify({ ...seed.trips[0], id: 't_back', number: 'Р-2003', odometerStart: 500, odometerEnd: 100 }),
+  })
+  assert.equal(backwards.status, 400)
+
+  const posted = await fetch(`${base}/api/trips`, {
+    method: 'POST',
+    headers: auth,
+    body: JSON.stringify({ ...seed.trips[0], id: 't_http_odo', number: 'Р-2004', odometerStart: 1000, odometerEnd: 1480 }),
+  })
+  const postedBody = (await posted.json()) as { state: { trips: { id: string; odometerStart: number | null; odometerEnd: number | null }[] } }
+  assert.equal(posted.status, 200)
+  const postedTrip = postedBody.state.trips.find((item) => item.id === 't_http_odo')
+  assert.equal(postedTrip?.odometerStart, 1000)
+  assert.equal(postedTrip?.odometerEnd, 1480)
+
   const created = await fetch(`${base}/api/vehicles`, {
     method: 'POST',
     headers: auth,
@@ -142,4 +211,5 @@ try {
   console.log('db tests ok')
 } finally {
   rmSync(dir, { recursive: true, force: true })
+  rmSync(legacyDir, { recursive: true, force: true })
 }

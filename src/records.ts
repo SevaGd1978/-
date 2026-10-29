@@ -138,6 +138,8 @@ export function parseTrip(value: unknown): Trip | null {
     payDue: optionalDay(row.payDue),
     status: typeof status === 'string' && TRIP_STATUS.has(status as TripStatus) ? (status as TripStatus) : null,
     note,
+    odometerStart: tripOdometer(row.odometerStart),
+    odometerEnd: tripOdometer(row.odometerEnd),
   }
   if (
     !parsed.id ||
@@ -153,7 +155,10 @@ export function parseTrip(value: unknown): Trip | null {
     parsed.rate == null ||
     parsed.payDue == null ||
     !parsed.status ||
-    parsed.note == null
+    parsed.note == null ||
+    parsed.odometerStart === undefined ||
+    parsed.odometerEnd === undefined ||
+    (parsed.odometerStart != null && parsed.odometerEnd != null && parsed.odometerEnd < parsed.odometerStart)
   ) {
     return null
   }
@@ -172,7 +177,15 @@ export function parseTrip(value: unknown): Trip | null {
     payDue: parsed.payDue,
     status: parsed.status,
     note: parsed.note,
+    odometerStart: parsed.odometerStart,
+    odometerEnd: parsed.odometerEnd,
   }
+}
+
+function tripOdometer(value: unknown): number | null | undefined {
+  if (value == null || value === '') return null
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 10_000_000) return undefined
+  return value
 }
 
 export function parseExpense(value: unknown): TripExpense | null {

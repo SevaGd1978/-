@@ -32,6 +32,8 @@ function trip(partial: Partial<Trip> = {}): Trip {
     payDue: '2026-10-10',
     status: 'planned',
     note: '',
+    odometerStart: null,
+    odometerEnd: null,
     ...partial,
   }
 }
@@ -65,6 +67,8 @@ const source = trip({
   customer: 'АО «Строй»',
   note: 'срочно',
   rate: 54000,
+  odometerStart: 100000,
+  odometerEnd: 100640,
 })
 const copy = copiedTrip(source, [source, trip({ number: 'Р-1041' })], '2026-10-21')
 assert.equal(copy.id, '')
@@ -78,6 +82,10 @@ assert.equal(copy.to, 'Пермь')
 assert.equal(copy.rate, 54000)
 assert.equal(copy.note, 'срочно')
 assert.equal(copy.vehicleId, source.vehicleId)
+assert.equal(copy.odometerStart, null)
+assert.equal(copy.odometerEnd, null)
+assert.equal(source.odometerStart, 100000)
+assert.equal(source.odometerEnd, 100640)
 assert.equal(source.status, 'delivered')
 assert.equal(source.payDue, '2026-09-15')
 assert.equal(parseMoney('1 200,50'), 1200.5)

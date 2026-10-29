@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { debtOf, isOverdue, sumAmounts } from '../calc'
 import {
   dateRu,
+  kmReading,
   money,
   payMethodLabel,
   todayIso,
@@ -109,6 +110,9 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
           {vehicle ? `${vehicle.kind} ${vehicle.model}, ${vehicle.plate}` : 'Машина не найдена'}
           {' · '}
           {driver ? `${driver.name}${driver.phone ? `, ${driver.phone}` : ''}` : 'Водитель не найден'}
+        </p>
+        <p>
+          Одометр: начало {kmReading(trip.odometerStart)}, конец {kmReading(trip.odometerEnd)}
         </p>
         <label className="status-line">
           <span>Статус рейса</span>

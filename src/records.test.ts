@@ -20,6 +20,15 @@ const base = {
 const open = parseTrip({ ...base, payDue: '' })
 assert.equal(open?.payDue, '')
 assert.equal(open?.number, 'Р-1042')
+assert.equal(open?.odometerStart, null)
+assert.equal(open?.odometerEnd, null)
+
+const readings = parseTrip({ ...base, payDue: '', odometerStart: 812400, odometerEnd: 813100 })
+assert.equal(readings?.odometerStart, 812400)
+assert.equal(readings?.odometerEnd, 813100)
+assert.equal(parseTrip({ ...base, payDue: '', odometerEnd: 100, odometerStart: 200 }), null)
+assert.equal(parseTrip({ ...base, payDue: '', odometerStart: -1 }), null)
+assert.equal(parseTrip({ ...base, payDue: '', odometerStart: 1.5 }), null)
 
 const dated = parseTrip({ ...base, payDue: '2026-11-01' })
 assert.equal(dated?.payDue, '2026-11-01')

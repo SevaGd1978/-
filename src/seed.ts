@@ -30,6 +30,8 @@ export function createSeed(): State {
         payDue: '2026-10-25',
         status: 'in_transit',
         note: 'Разгрузка на объекте до 18:00, пропуск заказан.',
+        odometerStart: 812400,
+        odometerEnd: null,
       },
       {
         id: 't2',
@@ -46,6 +48,8 @@ export function createSeed(): State {
         payDue: '2026-10-11',
         status: 'delivered',
         note: '',
+        odometerStart: 640100,
+        odometerEnd: 640880,
       },
       {
         id: 't3',
@@ -62,6 +66,8 @@ export function createSeed(): State {
         payDue: '2026-10-21',
         status: 'delivered',
         note: 'Ждём доплату по акту.',
+        odometerStart: 501200,
+        odometerEnd: 502040,
       },
       {
         id: 't4',
@@ -78,6 +84,8 @@ export function createSeed(): State {
         payDue: '2026-10-12',
         status: 'loading',
         note: 'Срок оплаты уже прошёл, счёт отправлен повторно.',
+        odometerStart: 812900,
+        odometerEnd: null,
       },
       {
         id: 't5',
@@ -94,6 +102,8 @@ export function createSeed(): State {
         payDue: '2026-10-30',
         status: 'planned',
         note: '',
+        odometerStart: null,
+        odometerEnd: null,
       },
       {
         id: 't6',
@@ -110,6 +120,8 @@ export function createSeed(): State {
         payDue: '2026-09-28',
         status: 'closed',
         note: '',
+        odometerStart: 639400,
+        odometerEnd: 640050,
       },
       {
         id: 't7',
@@ -126,6 +138,8 @@ export function createSeed(): State {
         payDue: '2026-10-05',
         status: 'closed',
         note: '',
+        odometerStart: 500100,
+        odometerEnd: 501050,
       },
       {
         id: 't8',
@@ -142,6 +156,8 @@ export function createSeed(): State {
         payDue: '2026-10-18',
         status: 'cancelled',
         note: 'Заказчик отменил отгрузку после выезда со стоянки.',
+        odometerStart: 220400,
+        odometerEnd: 220400,
       },
     ],
     expenses: [

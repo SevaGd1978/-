@@ -90,6 +90,8 @@ export function copiedTrip(source: Trip, trips: { number: string }[], today: str
     payDue: '',
     status: 'planned',
     note: source.note,
+    odometerStart: null,
+    odometerEnd: null,
   }
 }
 

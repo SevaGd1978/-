@@ -41,6 +41,10 @@ export interface Trip {
   payDue: string
   status: TripStatus
   note: string
+  /** Показание одометра при выезде, км. Пусто, если ещё не записали. */
+  odometerStart: number | null
+  /** Показание одометра по прибытии, км. Пусто, если рейс ещё не закрыт по пробегу. */
+  odometerEnd: number | null
 }
 
 export interface TripExpense {

@@ -43,6 +43,8 @@ CREATE TABLE IF NOT EXISTS trips (
   pay_due TEXT NOT NULL,
   status TEXT NOT NULL,
   note TEXT NOT NULL,
+  odometer_start REAL,
+  odometer_end REAL,
   position INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS expenses (
@@ -97,6 +99,7 @@ export function openDatabase(file: string): Sql {
   ensureVehicleSts(db)
   ensureExpenseVehicle(db)
   ensureExpenseVat(db)
+  ensureTripOdometer(db)
   ensureRoadCache(db)
   ensureAccounts(db)
   rememberTripCustomers(db)
@@ -170,13 +173,14 @@ export function saveTrip(db: Sql, trip: Trip): DbResult {
     db.prepare(
       `INSERT INTO trips (
          id, number, date, from_city, to_city, vehicle_id, driver_id, customer, cargo,
-         weight_tons, rate, pay_due, status, note, position
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         weight_tons, rate, pay_due, status, note, odometer_start, odometer_end, position
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          number = excluded.number, date = excluded.date, from_city = excluded.from_city,
          to_city = excluded.to_city, vehicle_id = excluded.vehicle_id, driver_id = excluded.driver_id,
          customer = excluded.customer, cargo = excluded.cargo, weight_tons = excluded.weight_tons,
-         rate = excluded.rate, pay_due = excluded.pay_due, status = excluded.status, note = excluded.note`,
+         rate = excluded.rate, pay_due = excluded.pay_due, status = excluded.status, note = excluded.note,
+         odometer_start = excluded.odometer_start, odometer_end = excluded.odometer_end`,
     ).run(
       trip.id,
       trip.number,
@@ -192,6 +196,8 @@ export function saveTrip(db: Sql, trip: Trip): DbResult {
       trip.payDue,
       trip.status,
       trip.note,
+      trip.odometerStart,
+      trip.odometerEnd,
       position,
     )
     rememberCustomer(db, trip.customer)
@@ -395,8 +401,8 @@ function insertTrips(db: Sql, rows: Trip[]) {
   const stmt = db.prepare(
     `INSERT INTO trips (
        id, number, date, from_city, to_city, vehicle_id, driver_id, customer, cargo,
-       weight_tons, rate, pay_due, status, note, position
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       weight_tons, rate, pay_due, status, note, odometer_start, odometer_end, position
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   rows.forEach((row, index) =>
     stmt.run(
@@ -414,6 +420,8 @@ function insertTrips(db: Sql, rows: Trip[]) {
       row.payDue,
       row.status,
       row.note,
+      row.odometerStart,
+      row.odometerEnd,
       rank(index, rows.length),
     ),
   )
@@ -557,6 +565,16 @@ function ensureExpenseVat(db: Sql) {
   db.exec(`ALTER TABLE expenses ADD COLUMN vat REAL`)
 }
 
+function ensureTripOdometer(db: Sql) {
+  const columns = db.prepare(`PRAGMA table_info(trips)`).all() as { name: string }[]
+  if (!columns.some((column) => column.name === 'odometer_start')) {
+    db.exec(`ALTER TABLE trips ADD COLUMN odometer_start REAL`)
+  }
+  if (!columns.some((column) => column.name === 'odometer_end')) {
+    db.exec(`ALTER TABLE trips ADD COLUMN odometer_end REAL`)
+  }
+}
+
 function unbindSharedCosts(db: Sql) {
   const removed = db.prepare(`DELETE FROM expenses WHERE id LIKE 'platon\\_%' ESCAPE '\\'`).run()
   const expenses = db
@@ -592,7 +610,8 @@ function readState(db: Sql): State {
     trips: db
       .prepare(
         `SELECT id, number, date, from_city AS "from", to_city AS "to", vehicle_id AS vehicleId, driver_id AS driverId,
-                customer, cargo, weight_tons AS weightTons, rate, pay_due AS payDue, status, note
+                customer, cargo, weight_tons AS weightTons, rate, pay_due AS payDue, status, note,
+                odometer_start AS odometerStart, odometer_end AS odometerEnd
          FROM trips ORDER BY position DESC`,
       )
       .all() as unknown as Trip[],
