@@ -172,6 +172,10 @@ function SpendForm({
       setError('НДС укажите числом или оставьте поле пустым.')
       return
     }
+    if (category === 'fuel' && manual != null && manual > parsed) {
+      setError('НДС не может быть больше суммы топлива.')
+      return
+    }
     onSubmit({
       id: initial?.id ?? uid('e'),
       vehicleId: shared ? '' : (initial?.vehicleId || trip.vehicleId),
@@ -194,7 +198,7 @@ function SpendForm({
       <Field label="Дата">
         <input type="date" value={date} onChange={(event) => setDate(event.target.value)} required autoFocus />
       </Field>
-      <Field label="Сумма без НДС, ₽">
+      <Field label={category === 'fuel' ? 'Сумма с НДС, ₽' : 'Сумма без НДС, ₽'}>
         <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
       </Field>
       <Field label="НДС, ₽">

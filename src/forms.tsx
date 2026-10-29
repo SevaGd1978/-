@@ -285,6 +285,10 @@ export function ExpenseForm({
       setError('НДС укажите числом или оставьте поле пустым.')
       return
     }
+    if (category === 'fuel' && manual != null && manual > parsed) {
+      setError('НДС не может быть больше суммы топлива.')
+      return
+    }
     onSubmit({
       id: initial?.id ?? uid('e'),
       vehicleId: shared ? '' : vehicleId,
@@ -325,7 +329,7 @@ export function ExpenseForm({
           ))}
         </select>
       </Field>
-      <Field label="Сумма без НДС, ₽">
+      <Field label={category === 'fuel' ? 'Сумма с НДС, ₽' : 'Сумма без НДС, ₽'}>
         <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
       </Field>
       <Field label="НДС, ₽">
@@ -388,6 +392,10 @@ export function SharedExpenseForm({
       setError('НДС укажите числом или оставьте поле пустым.')
       return
     }
+    if (picked === 'fuel' && manual != null && manual > parsed) {
+      setError('НДС не может быть больше суммы топлива.')
+      return
+    }
     onSubmit({
       id: initial?.id ?? uid('e'),
       vehicleId: '',
@@ -414,7 +422,7 @@ export function SharedExpenseForm({
           ))}
         </select>
       </Field>
-      <Field label="Сумма без НДС, ₽">
+      <Field label={picked === 'fuel' ? 'Сумма с НДС, ₽' : 'Сумма без НДС, ₽'}>
         <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
       </Field>
       <Field label="НДС, ₽">

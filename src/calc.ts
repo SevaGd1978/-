@@ -4,14 +4,15 @@ export function round2(value: number) {
   return Math.round(value * 100) / 100
 }
 
-/** НДС с 2026 года. Пустое значение — 22% от суммы, в том числе на топливо. */
+/** НДС с 2026 года. У топлива сумма уже с налогом, у остальных 22% добавляются сверху. */
 export const VAT_PERCENT = 22
 
 /** Зарплата рейса: столько рублей за километр пробега по одометру. */
 export const SALARY_PER_KM = 10
 
-export function expenseVat(_category: string, amount: number, manual?: number | null) {
+export function expenseVat(category: string, amount: number, manual?: number | null) {
   if (manual != null) return round2(manual)
+  if (category === 'fuel') return round2((amount * VAT_PERCENT) / (100 + VAT_PERCENT))
   return round2((amount * VAT_PERCENT) / 100)
 }
 
@@ -30,6 +31,7 @@ export function tripSalary(trip: { odometerStart: number | null; odometerEnd: nu
 }
 
 export function expenseWithVat(category: string, amount: number, manual?: number | null) {
+  if (category === 'fuel') return round2(amount)
   return round2(amount + expenseVat(category, amount, manual))
 }
 

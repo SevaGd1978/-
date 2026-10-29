@@ -37,7 +37,7 @@ assert.deepEqual(trips.section.totals?.slice(11), [403000, 144000, 220000])
 
 const expenses = section('expenses')
 assert.equal(expenses.section.rows.length, 12)
-assert.equal(expenses.section.totals?.at(-1), 116388)
+assert.equal(expenses.section.totals?.at(-1), 101736)
 
 const repairs = section('repairs')
 assert.equal(repairs.section.rows.length, 3)
@@ -57,7 +57,7 @@ const summary = buildReport(state, { kind: 'summary', ...october }, now)
 const indicators = summary.sections[0].rows
 assert.deepEqual(
   indicators.map((row) => row[1]),
-  [242000, 116388, 91100, 34512, 220000],
+  [242000, 101736, 91100, 49164, 220000],
 )
 assert.equal(summary.periodLabel, 'С 01.10.2026 по 31.10.2026')
 assert.equal(summary.filename, 'putevoy-svodka-2026-10-01_2026-10-31')

@@ -94,8 +94,8 @@ assert.equal(parseMoney('1 200,50'), 1200.5)
 assert.equal(parseMoney('0'), 0)
 assert.equal(parseMoney('-5'), null)
 assert.equal(parseMoney(''), null)
-assert.equal(expenseVat('fuel', 18500), 4070)
-assert.equal(expenseWithVat('fuel', 18500), 22570)
+assert.equal(expenseVat('fuel', 18500), 3336.07)
+assert.equal(expenseWithVat('fuel', 18500), 18500)
 assert.equal(tripDistanceKm({ odometerStart: 812400, odometerEnd: 813100 }), 700)
 assert.equal(tripSalary({ odometerStart: 812400, odometerEnd: 813100 }), 7000)
 assert.equal(tripSalary({ odometerStart: 220400, odometerEnd: 220400 }), 0)
@@ -110,6 +110,7 @@ assert.equal(expenseWithVat('platon', 1129.86), 1378.43)
 assert.equal(expenseVat('toll', 1000, 50), 50)
 assert.equal(expenseWithVat('toll', 1000, 50), 1050)
 assert.equal(expenseVat('fuel', 1000, 180), 180)
+assert.equal(expenseWithVat('fuel', 1000, 180), 1000)
 assert.equal(expenseVat('toll', 1000, null), 220)
 assert.equal(expenseVat('toll', 1000, 0), 0)
 assert.equal(expenseWithVat('toll', 1000, 0), 1000)
@@ -119,7 +120,7 @@ assert.equal(
     { category: 'toll', amount: 2400 },
     { category: 'driver', amount: 6000 },
   ]),
-  32818,
+  28748,
 )
 
 console.log('calc ok')
