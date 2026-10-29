@@ -72,7 +72,7 @@ export const reportCatalog: { kind: ReportKind; label: string; text: string }[] 
   {
     kind: 'trips',
     label: 'Рейсы',
-    text: 'Реестр рейсов: в каждой строке ставка, оплата, долг и расходы. Сводки по заказчикам, водителям, машинам и статусам.',
+    text: 'Реестр рейсов. В строке — ставка, оплата, долг, зарплата, топливо и платные дороги из карточки рейса.',
   },
   {
     kind: 'economy',
@@ -115,7 +115,7 @@ const notes: Record<ReportKind, string> = {
   summary:
     'Результат = получено − расходы − ремзона. Долг считается по дате выхода рейса, с учётом всех оплат. Статьи затрат и ремзона — по своим датам.',
   trips:
-    'Рейсы отобраны по дате выхода. Оплаты в реестре и сводках показаны целиком, даже если часть из них попала в другой месяц. В строке рейса расходы с НДС: топливо уже с налогом, остальные статьи получают 22%, если НДС не вписан. Зарплата — 10 ₽ за километр пробега и входит в итог расходов.',
+    'Рейсы отобраны по дате выхода. Оплаты показаны целиком, даже если часть попала в другой месяц. Зарплата, топливо и платные дороги взяты из карточки рейса: зарплата — 10 ₽ за километр пробега, топливо — введённая сумма с НДС, платные дороги — сумма с 22%, если НДС не вписан.',
   economy:
     'Рейсы отобраны по дате выхода. Пробег — разница показаний одометра, зарплата — 10 ₽ за километр. Расходы привязаны к рейсу и показаны с НДС: топливо уже с налогом, остальные статьи получают 22%, если НДС не вписан. Прибыль = ставка − расходы; у отменённого рейса ставка в прибыль не входит. Дебиторка — непогашенный остаток.',
   expenses:
@@ -390,19 +390,17 @@ function tripSection(state: State, from: string, to: string): ReportSection {
     column('Ставка', 'right', 14, 'money'),
     column('Оплачено', 'right', 14, 'money'),
     column('Долг', 'right', 14, 'money'),
-    column('Расходы', 'right', 14, 'money'),
+    column('Зарплата', 'right', 14, 'money'),
     column('Топливо', 'right', 14, 'money'),
     column('Платные дороги', 'right', 16, 'money'),
-    column('Платон', 'right', 14, 'money'),
-    column('Прочие расходы', 'right', 16, 'money'),
-    column('Зарплата', 'right', 14, 'money'),
+    column('Расходы', 'right', 14, 'money'),
   ]
   const rows = state.trips
     .filter((trip) => inRange(trip.date, from, to))
     .sort((a, b) => a.date.localeCompare(b.date) || a.number.localeCompare(b.number))
     .map((trip) => {
       const economics = tripEconomics(state, trip)
-      const costs = tripEconomy(state, trip)
+      const costs = tripCardCosts(state, trip)
       return [
         dateRu(trip.date),
         trip.number,
@@ -418,12 +416,10 @@ function tripSection(state: State, from: string, to: string): ReportSection {
         trip.rate,
         economics.paid,
         economics.debt,
-        costs.spend,
+        costs.salary,
         costs.fuel,
         costs.toll,
-        costs.platon,
-        costs.other,
-        costs.salary,
+        costs.spend,
       ]
     })
   return { title: 'Рейсы', columns, rows, totals: totalRow(rows, columns) }
@@ -748,6 +744,20 @@ function debtBreakdown(state: State, from: string, to: string, today: string): R
     .sort((a, b) => b[1].debt - a[1].debt || a[0].localeCompare(b[0], 'ru'))
     .map(([name, bucket]) => [name, bucket.count, bucket.rate, bucket.paid, bucket.debt, bucket.overdue])
   return { title: 'Долги по заказчикам', columns, rows, totals: totalRow(rows, columns) }
+}
+
+function tripCardCosts(state: State, trip: Trip) {
+  const linked = state.expenses.filter((expense) => expense.tripId === trip.id)
+  const fuel = sumExpenses(linked.filter((expense) => expense.category === 'fuel'))
+  const toll = sumExpenses(linked.filter((expense) => expense.category === 'toll'))
+  const other = sumExpenses(linked.filter((expense) => expense.category === 'other'))
+  const salary = tripSalary(trip)
+  return {
+    salary,
+    fuel,
+    toll,
+    spend: round2(fuel + toll + other + (salary ?? 0)),
+  }
 }
 
 function tripEconomy(state: State, trip: Trip) {
