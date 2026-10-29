@@ -11,6 +11,7 @@ import {
 } from '../format'
 import { CopyTripDrawer, TripForm } from '../forms'
 import { RoadMap } from '../RoadMap'
+import { TripSpend } from '../TripSpend'
 import { useAuth } from '../auth'
 import { federalLabel, legKey, roadDetail, roadKm } from '../roads'
 import { useData } from '../store'
@@ -259,6 +260,7 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
             {selected ? (
               <>
                 <TripCard
+                  trip={selected.trip}
                   number={selected.trip.number}
                   customer={selected.trip.customer}
                   route={`${selected.trip.from} — ${selected.trip.to}`}
@@ -315,6 +317,7 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
 }
 
 function TripCard({
+  trip,
   number,
   customer,
   route,
@@ -334,6 +337,7 @@ function TripCard({
   onOpen,
   onCopy,
 }: {
+  trip: Trip
   number: string
   customer: string
   route: string
@@ -400,6 +404,7 @@ function TripCard({
           </dd>
         </div>
       </dl>
+      <TripSpend trip={trip} />
       <ul className="trip-sums">
         <li>
           <span>Сумма</span>

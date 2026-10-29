@@ -13,6 +13,7 @@ import {
 } from '../format'
 import { CopyTripDrawer, PaymentForm, TripForm } from '../forms'
 import { RoadMap } from '../RoadMap'
+import { TripSpend } from '../TripSpend'
 import { useAuth } from '../auth'
 import { federalLabel, legKey, roadDetail } from '../roads'
 import { useData } from '../store'
@@ -159,6 +160,10 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
         Срок оплаты: {trip.payDue ? dateRu(trip.payDue) : 'не задан'}. Топливо, Платон и платные дороги записываются отдельно,
         без машины. Суточные можно провести по машине или в общие расходы.
       </p>
+
+      <section className="card">
+        <TripSpend trip={trip} />
+      </section>
 
       <section className="card">
           <div className="section-head">
