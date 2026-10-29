@@ -4,16 +4,34 @@ export function round2(value: number) {
   return Math.round(value * 100) / 100
 }
 
-/** НДС с 2026 года. На топливо не начисляется: сумма в учёте остаётся как введена. */
+/** НДС с 2026 года. У топлива сумма уже с налогом, у остальных 22% добавляются сверху. */
 export const VAT_PERCENT = 22
+
+/** Зарплата рейса: столько рублей за километр пробега по одометру. */
+export const SALARY_PER_KM = 10
 
 export function expenseVat(category: string, amount: number, manual?: number | null) {
   if (manual != null) return round2(manual)
-  if (category === 'fuel') return 0
+  if (category === 'fuel') return round2((amount * VAT_PERCENT) / (100 + VAT_PERCENT))
   return round2((amount * VAT_PERCENT) / 100)
 }
 
+/** Пробег рейса по одометру. Пусто, пока нет обоих показаний или конец меньше начала. */
+export function tripDistanceKm(trip: { odometerStart: number | null; odometerEnd: number | null }) {
+  if (trip.odometerStart == null || trip.odometerEnd == null) return null
+  if (trip.odometerEnd < trip.odometerStart) return null
+  return round2(trip.odometerEnd - trip.odometerStart)
+}
+
+/** Зарплата рейса: 10 ₽ за километр разницы показаний одометра. */
+export function tripSalary(trip: { odometerStart: number | null; odometerEnd: number | null }) {
+  const km = tripDistanceKm(trip)
+  if (km == null) return null
+  return round2(km * SALARY_PER_KM)
+}
+
 export function expenseWithVat(category: string, amount: number, manual?: number | null) {
+  if (category === 'fuel') return round2(amount)
   return round2(amount + expenseVat(category, amount, manual))
 }
 
@@ -90,6 +108,8 @@ export function copiedTrip(source: Trip, trips: { number: string }[], today: str
     payDue: '',
     status: 'planned',
     note: source.note,
+    odometerStart: null,
+    odometerEnd: null,
   }
 }
 

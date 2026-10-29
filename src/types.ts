@@ -41,6 +41,10 @@ export interface Trip {
   payDue: string
   status: TripStatus
   note: string
+  /** Показание одометра при выезде, км. Пусто, если ещё не записали. */
+  odometerStart: number | null
+  /** Показание одометра по прибытии, км. Пусто, если рейс ещё не закрыт по пробегу. */
+  odometerEnd: number | null
 }
 
 export interface TripExpense {
@@ -50,7 +54,7 @@ export interface TripExpense {
   date: string
   category: ExpenseCategory
   amount: number
-  /** Ручной НДС. Пустое значение считает 22% само, на топливе ноль. */
+  /** Ручной НДС. Пустое значение: у топлива 22% внутри суммы, у остальных 22% сверху. */
   vat?: number | null
   comment: string
 }

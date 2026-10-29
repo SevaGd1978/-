@@ -13,6 +13,8 @@ import {
   repairCost,
   round2,
   sumExpenses,
+  tripDistanceKm,
+  tripSalary,
 } from './calc.ts'
 import type { Trip } from './types.ts'
 
@@ -32,6 +34,8 @@ function trip(partial: Partial<Trip> = {}): Trip {
     payDue: '2026-10-10',
     status: 'planned',
     note: '',
+    odometerStart: null,
+    odometerEnd: null,
     ...partial,
   }
 }
@@ -65,6 +69,8 @@ const source = trip({
   customer: 'АО «Строй»',
   note: 'срочно',
   rate: 54000,
+  odometerStart: 100000,
+  odometerEnd: 100640,
 })
 const copy = copiedTrip(source, [source, trip({ number: 'Р-1041' })], '2026-10-21')
 assert.equal(copy.id, '')
@@ -78,14 +84,24 @@ assert.equal(copy.to, 'Пермь')
 assert.equal(copy.rate, 54000)
 assert.equal(copy.note, 'срочно')
 assert.equal(copy.vehicleId, source.vehicleId)
+assert.equal(copy.odometerStart, null)
+assert.equal(copy.odometerEnd, null)
+assert.equal(source.odometerStart, 100000)
+assert.equal(source.odometerEnd, 100640)
 assert.equal(source.status, 'delivered')
 assert.equal(source.payDue, '2026-09-15')
 assert.equal(parseMoney('1 200,50'), 1200.5)
 assert.equal(parseMoney('0'), 0)
 assert.equal(parseMoney('-5'), null)
 assert.equal(parseMoney(''), null)
-assert.equal(expenseVat('fuel', 18500), 0)
+assert.equal(expenseVat('fuel', 18500), 3336.07)
 assert.equal(expenseWithVat('fuel', 18500), 18500)
+assert.equal(tripDistanceKm({ odometerStart: 812400, odometerEnd: 813100 }), 700)
+assert.equal(tripSalary({ odometerStart: 812400, odometerEnd: 813100 }), 7000)
+assert.equal(tripSalary({ odometerStart: 220400, odometerEnd: 220400 }), 0)
+assert.equal(tripSalary({ odometerStart: 812400, odometerEnd: null }), null)
+assert.equal(tripSalary({ odometerStart: null, odometerEnd: 813100 }), null)
+assert.equal(tripDistanceKm({ odometerStart: 813100, odometerEnd: 812400 }), null)
 assert.equal(expenseVat('toll', 2400), 528)
 assert.equal(expenseWithVat('toll', 2400), 2928)
 assert.equal(expenseWithVat('salary', 100), 122)
@@ -94,6 +110,7 @@ assert.equal(expenseWithVat('platon', 1129.86), 1378.43)
 assert.equal(expenseVat('toll', 1000, 50), 50)
 assert.equal(expenseWithVat('toll', 1000, 50), 1050)
 assert.equal(expenseVat('fuel', 1000, 180), 180)
+assert.equal(expenseWithVat('fuel', 1000, 180), 1000)
 assert.equal(expenseVat('toll', 1000, null), 220)
 assert.equal(expenseVat('toll', 1000, 0), 0)
 assert.equal(expenseWithVat('toll', 1000, 0), 1000)

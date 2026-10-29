@@ -1,4 +1,4 @@
-import { expenseWithVat, VAT_PERCENT } from './calc'
+import { expenseVat, expenseWithVat, VAT_PERCENT } from './calc'
 import type { ExpenseCategory, ParkStatus, PayMethod, RepairKind, RepairStatus, TripStatus, VehicleStatus } from './types'
 
 export const tripStatusLabel: Record<TripStatus, string> = {
@@ -112,11 +112,19 @@ export function money(value: number) {
 }
 
 export function expenseEntryHint(category: string, amount: number | null, manual: number | null) {
+  if (category === 'fuel') {
+    if (amount == null || amount <= 0) {
+      return manual != null
+        ? `НДС ${money(manual)} входит в сумму топлива.`
+        : `Сумма уже с НДС. Пустое поле выделит ${VAT_PERCENT}% внутри неё.`
+    }
+    const tax = expenseVat(category, amount, manual)
+    return `К учёту ${money(amount)}, в том числе НДС ${money(tax)}.`
+  }
   if (manual != null) {
     if (amount == null || amount <= 0) return `НДС ${money(manual)} запишется как введён.`
     return `К учёту ${money(expenseWithVat(category, amount, manual))}, в том числе НДС ${money(manual)}.`
   }
-  if (category === 'fuel') return 'Пустое поле НДС оставляет топливо без налога. Свою сумму можно вписать.'
   if (amount == null || amount <= 0) return `Пустое поле НДС посчитает ${VAT_PERCENT}%. Свою сумму можно вписать.`
   return `К учёту ${money(expenseWithVat(category, amount))}, в том числе НДС ${VAT_PERCENT}%. Свою сумму можно вписать.`
 }
@@ -135,6 +143,11 @@ export function dateRu(iso: string) {
 export function tons(value: number) {
   if (!value) return '—'
   return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 }).format(value)} т`
+}
+
+export function kmReading(value: number | null) {
+  if (value == null) return '—'
+  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value)
 }
 
 export function todayIso() {
