@@ -1,4 +1,17 @@
-import { debtOf, expenseVat, expenseWithVat, inRange, isOverdue, repairCost, round2, sumAmounts, sumExpenses } from '../calc'
+import {
+  debtOf,
+  expenseVat,
+  expenseWithVat,
+  inRange,
+  isOverdue,
+  marginOf,
+  repairCost,
+  round2,
+  sumAmounts,
+  sumExpenses,
+  tripDistanceKm,
+  tripSalary,
+} from '../calc'
 import {
   dateRu,
   expenseCategories,
@@ -14,7 +27,7 @@ import {
 } from '../format'
 import type { State, Trip } from '../types'
 
-export type ReportKind = 'summary' | 'trips' | 'expenses' | 'repairs' | 'payments' | 'debts'
+export type ReportKind = 'summary' | 'trips' | 'economy' | 'expenses' | 'repairs' | 'payments' | 'debts'
 
 export type ColumnKind = 'text' | 'money' | 'number' | 'figure'
 
@@ -62,6 +75,11 @@ export const reportCatalog: { kind: ReportKind; label: string; text: string }[] 
     text: 'Реестр рейсов и сводки по заказчикам, водителям, машинам и статусам.',
   },
   {
+    kind: 'economy',
+    label: 'Экономика рейсов',
+    text: 'По каждому рейсу пробег, зарплата и расходы. Внизу прибыль, дебиторка и расходы. Файл открывается в Excel.',
+  },
+  {
     kind: 'expenses',
     label: 'Расходы',
     text: 'Затраты по дате. Топливо, Платон и платные дороги отдельно, без машины. Общие расходы тоже можно записать без машины.',
@@ -86,6 +104,7 @@ export const reportCatalog: { kind: ReportKind; label: string; text: string }[] 
 const titles: Record<ReportKind, string> = {
   summary: 'Сводка',
   trips: 'Реестр рейсов',
+  economy: 'Экономика рейсов',
   expenses: 'Расходы по машинам',
   repairs: 'Ремзона',
   payments: 'Оплаты за рейсы',
@@ -97,6 +116,8 @@ const notes: Record<ReportKind, string> = {
     'Результат = получено − расходы − ремзона. Долг считается по дате выхода рейса, с учётом всех оплат. Статьи затрат и ремзона — по своим датам.',
   trips:
     'Рейсы отобраны по дате выхода. Оплаты в реестре и сводках показаны целиком, даже если часть из них попала в другой месяц.',
+  economy:
+    'Рейсы отобраны по дате выхода. Пробег — разница показаний одометра, зарплата — 10 ₽ за километр. Расходы привязаны к рейсу и показаны с НДС: топливо уже с налогом, остальные статьи получают 22%, если НДС не вписан. Прибыль = ставка − расходы; у отменённого рейса ставка в прибыль не входит. Дебиторка — непогашенный остаток.',
   expenses:
     'Строки отобраны по дате расхода. Топливо, Платон, ремзона и платные дороги записаны отдельно, без машины. Суточные, зарплату, погрузку, стоянку и прочее можно записать на машину или в общие расходы. Топливо вводят суммой с НДС: пустое поле выделяет 22% внутри неё. У остальных пустое поле добавляет 22% сверху. Зарплата выделена отдельной статьёй, даже если за период её не было.',
   repairs: 'Заявки и сводки отобраны по дате постановки в ремзону.',
@@ -107,6 +128,7 @@ const notes: Record<ReportKind, string> = {
 const fileSlugs: Record<ReportKind, string> = {
   summary: 'svodka',
   trips: 'reisy',
+  economy: 'ekonomika',
   expenses: 'raskhody',
   repairs: 'remzona',
   payments: 'oplaty',
@@ -155,10 +177,12 @@ function filename(kind: ReportKind, from: string, to: string) {
   return `putevoy-${fileSlugs[kind]}-${span}`
 }
 
-function totalRow(rows: (string | number | null)[][], columns: ReportColumn[]) {
+function totalRow(rows: (string | number | null)[][], columns: ReportColumn[], skip: number[] = []) {
   if (rows.length === 0) return null
+  const skipped = new Set(skip)
   return columns.map((item, index) => {
     if (index === 0) return 'Итого'
+    if (skipped.has(index)) return null
     if (item.kind !== 'money' && item.kind !== 'number') return null
     return round2(rows.reduce((sum, row) => sum + (typeof row[index] === 'number' ? row[index] : 0), 0))
   })
@@ -713,6 +737,101 @@ function debtBreakdown(state: State, from: string, to: string, today: string): R
   return { title: 'Долги по заказчикам', columns, rows, totals: totalRow(rows, columns) }
 }
 
+function tripEconomy(state: State, trip: Trip) {
+  const linked = state.expenses.filter((expense) => expense.tripId === trip.id && expense.category !== 'salary')
+  const fuel = sumExpenses(linked.filter((expense) => expense.category === 'fuel'))
+  const toll = sumExpenses(linked.filter((expense) => expense.category === 'toll'))
+  const platon = sumExpenses(linked.filter((expense) => expense.category === 'platon'))
+  const other = sumExpenses(
+    linked.filter((expense) => expense.category !== 'fuel' && expense.category !== 'toll' && expense.category !== 'platon'),
+  )
+  const salary = tripSalary(trip)
+  const spend = round2(fuel + toll + platon + other + (salary ?? 0))
+  const paid = tripEconomics(state, trip)
+  const revenue = trip.status === 'cancelled' ? 0 : trip.rate
+  return {
+    km: tripDistanceKm(trip),
+    salary,
+    fuel,
+    toll,
+    platon,
+    other,
+    spend,
+    paid: paid.paid,
+    debt: paid.debt,
+    revenue,
+    profit: marginOf(trip, spend),
+  }
+}
+
+function tripEconomySections(state: State, from: string, to: string): ReportSection[] {
+  const columns = [
+    column('Дата', 'left', 14, 'text'),
+    column('Рейс', 'left', 12, 'text'),
+    column('Маршрут', 'left', 28, 'text'),
+    column('Заказчик', 'left', 28, 'text'),
+    column('Машина', 'left', 24, 'text'),
+    column('Водитель', 'left', 22, 'text'),
+    column('Одометр, начало', 'right', 16, 'figure'),
+    column('Одометр, конец', 'right', 16, 'figure'),
+    column('Пробег, км', 'right', 14, 'number'),
+    column('Зарплата', 'right', 14, 'money'),
+    column('Топливо', 'right', 14, 'money'),
+    column('Платные дороги', 'right', 16, 'money'),
+    column('Платон', 'right', 14, 'money'),
+    column('Прочие расходы', 'right', 16, 'money'),
+    column('Расходы', 'right', 14, 'money'),
+    column('Ставка', 'right', 14, 'money'),
+    column('Оплачено', 'right', 14, 'money'),
+    column('Дебиторка', 'right', 14, 'money'),
+    column('Прибыль', 'right', 14, 'money'),
+  ]
+  const trips = periodTrips(state, from, to)
+  const rows = trips.map((trip) => {
+    const economy = tripEconomy(state, trip)
+    return [
+      dateRu(trip.date),
+      trip.number,
+      `${trip.from} – ${trip.to}`,
+      trip.customer,
+      vehicleLabel(state, trip.vehicleId),
+      driverName(state, trip.driverId),
+      trip.odometerStart,
+      trip.odometerEnd,
+      economy.km,
+      economy.salary,
+      economy.fuel,
+      economy.toll,
+      economy.platon,
+      economy.other,
+      economy.spend,
+      trip.rate,
+      economy.paid,
+      economy.debt,
+      economy.profit,
+    ]
+  })
+  const spent = round2(trips.reduce((sum, trip) => sum + tripEconomy(state, trip).spend, 0))
+  const profit = round2(trips.reduce((sum, trip) => sum + tripEconomy(state, trip).profit, 0))
+  const debt = round2(trips.reduce((sum, trip) => sum + tripEconomy(state, trip).debt, 0))
+  const revenue = round2(trips.reduce((sum, trip) => sum + tripEconomy(state, trip).revenue, 0))
+  const paid = round2(trips.reduce((sum, trip) => sum + tripEconomy(state, trip).paid, 0))
+  const salary = round2(trips.reduce((sum, trip) => sum + (tripEconomy(state, trip).salary ?? 0), 0))
+  const summaryColumns = [column('Показатель', 'left', 28, 'text'), column('Сумма', 'right', 16, 'money')]
+  const summaryRows: (string | number | null)[][] = [
+    ['Выручка', revenue],
+    ['Расходы', spent],
+    ['Прибыль', profit],
+    ['Дебиторка', debt],
+    ['Оплачено', paid],
+    ['Зарплата', salary],
+  ]
+  return [
+    { title: 'Рейсы', columns, rows, totals: totalRow(rows, columns) },
+    { title: 'Сводка', columns: summaryColumns, rows: summaryRows, totals: null },
+  ]
+}
+
 export function buildReport(state: State, query: ReportQuery, now = new Date()): BuiltReport {
   const today = isoDate(now)
   const sections =
@@ -726,7 +845,9 @@ export function buildReport(state: State, query: ReportQuery, now = new Date()):
             ? [repairSection(state, query.from, query.to), ...repairBreakdowns(state, query.from, query.to)]
             : query.kind === 'payments'
               ? [paymentSection(state, query.from, query.to), ...paymentBreakdowns(state, query.from, query.to)]
-              : [debtSection(state, query.from, query.to, today), debtBreakdown(state, query.from, query.to, today)]
+              : query.kind === 'economy'
+                ? tripEconomySections(state, query.from, query.to)
+                : [debtSection(state, query.from, query.to, today), debtBreakdown(state, query.from, query.to, today)]
 
   return {
     kind: query.kind,
