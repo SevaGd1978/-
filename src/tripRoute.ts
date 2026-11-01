@@ -24,6 +24,15 @@ export function tripRouteLabel(trip: Pick<Trip, 'routeKind' | 'from' | 'to' | 'l
   return `${trip.from} – ${trip.to}`
 }
 
+/** Полный маршрут для Excel/PDF: тип + все погрузки и выгрузки. */
+export function tripRouteReportLabel(
+  trip: Pick<Trip, 'routeKind' | 'from' | 'to' | 'load1' | 'unload1' | 'load2' | 'unload2' | 'returnCity'>,
+) {
+  const kind = trip.routeKind ?? 'direct'
+  if (kind === 'direct') return tripRouteLabel(trip)
+  return `${tripRouteKindLabel(kind)}: ${tripRouteLabel(trip)}`
+}
+
 export function tripRoadPairs(trip: Trip): { from: string; to: string }[] {
   const kind = trip.routeKind ?? 'direct'
   if (kind === 'round1') {

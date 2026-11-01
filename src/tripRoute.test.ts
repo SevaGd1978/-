@@ -4,6 +4,7 @@ import {
   tripOdometerKm,
   tripRoadPairs,
   tripRouteLabel,
+  tripRouteReportLabel,
   validateTripRoute,
 } from './tripRoute.ts'
 import type { Trip } from './types.ts'
@@ -52,5 +53,9 @@ const round2 = finalizeTripRoute({
 })
 assert.equal(tripRoadPairs(round2).length, 5)
 assert.equal(tripOdometerKm(round2), 900)
+assert.match(tripRouteReportLabel(round2), /Кругорейс · 2 загрузки и 2 выгрузки/)
+assert.match(tripRouteReportLabel(round2), /погр\. Уфа/)
+assert.match(tripRouteReportLabel(round2), /выгр\. Челябинск/)
+assert.equal(tripRouteLabel(round2), tripRouteReportLabel(round2).split(': ')[1])
 
 console.log('tripRoute tests ok')

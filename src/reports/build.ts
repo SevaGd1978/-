@@ -1,5 +1,5 @@
 import { debtOf, expenseVat, expenseWithVat, inRange, isOverdue, repairCost, round2, sumAmounts, sumExpenses } from '../calc'
-import { formatOdometer, tripOdometerKm, tripRouteLabel } from '../tripRoute.ts'
+import { formatOdometer, tripOdometerKm, tripRouteKindLabel, tripRouteReportLabel } from '../tripRoute.ts'
 import {
   dateRu,
   expenseCategories,
@@ -355,7 +355,13 @@ function tripSection(state: State, from: string, to: string): ReportSection {
   const columns = [
     column('Дата', 'left', 14, 'text'),
     column('Рейс', 'left', 12, 'text'),
-    column('Маршрут', 'left', 28, 'text'),
+    column('Тип маршрута', 'left', 28, 'text'),
+    column('Маршрут', 'left', 56, 'text'),
+    column('Погр. 1', 'left', 16, 'text'),
+    column('Выгр. 1', 'left', 16, 'text'),
+    column('Погр. 2', 'left', 16, 'text'),
+    column('Выгр. 2', 'left', 16, 'text'),
+    column('Возврат', 'left', 16, 'text'),
     column('Заказчик', 'left', 28, 'text'),
     column('Груз', 'left', 28, 'text'),
     column('Вес, т', 'right', 12, 'number'),
@@ -379,10 +385,18 @@ function tripSection(state: State, from: string, to: string): ReportSection {
     .map((trip) => {
       const economics = tripEconomics(state, trip)
       const costs = tripLinkedCosts(state, trip)
+      const kind = trip.routeKind ?? 'direct'
+      const isRound = kind !== 'direct'
       return [
         dateRu(trip.date),
         trip.number,
-        tripRouteLabel(trip),
+        tripRouteKindLabel(kind),
+        tripRouteReportLabel(trip),
+        isRound ? trip.load1 || '—' : trip.from || '—',
+        isRound ? trip.unload1 || '—' : trip.to || '—',
+        kind === 'round2' ? trip.load2 || '—' : '—',
+        kind === 'round2' ? trip.unload2 || '—' : '—',
+        isRound ? trip.returnCity || trip.from || '—' : '—',
         trip.customer,
         trip.cargo,
         trip.weightTons,
@@ -398,9 +412,7 @@ function tripSection(state: State, from: string, to: string): ReportSection {
         costs.spend,
         formatOdometer(trip.odometerLoad1),
         formatOdometer(
-          (trip.routeKind ?? 'direct') === 'round2' && trip.odometerUnload2 != null
-            ? trip.odometerUnload2
-            : trip.odometerUnload1,
+          kind === 'round2' && trip.odometerUnload2 != null ? trip.odometerUnload2 : trip.odometerUnload1,
         ),
         tripOdometerKm(trip) != null ? `${tripOdometerKm(trip)!.toLocaleString('ru-RU')} км` : '—',
       ]
@@ -479,7 +491,12 @@ function paymentSection(state: State, from: string, to: string): ReportSection {
   const columns = [
     column('Дата', 'left', 14, 'text'),
     column('Рейс', 'left', 12, 'text'),
-    column('Маршрут', 'left', 28, 'text'),
+    column('Тип маршрута', 'left', 28, 'text'),
+    column('Маршрут', 'left', 56, 'text'),
+    column('Погр. 1', 'left', 16, 'text'),
+    column('Выгр. 1', 'left', 16, 'text'),
+    column('Погр. 2', 'left', 16, 'text'),
+    column('Выгр. 2', 'left', 16, 'text'),
     column('Заказчик', 'left', 28, 'text'),
     column('Плательщик', 'left', 28, 'text'),
     column('Способ', 'left', 14, 'text'),
@@ -491,10 +508,17 @@ function paymentSection(state: State, from: string, to: string): ReportSection {
     .sort((a, b) => a.date.localeCompare(b.date))
     .map((payment) => {
       const trip = tripById(state, payment.tripId)
+      const kind = trip?.routeKind ?? 'direct'
+      const isRound = kind !== 'direct'
       return [
         dateRu(payment.date),
         trip?.number ?? '—',
-        trip ? tripRouteLabel(trip) : '—',
+        trip ? tripRouteKindLabel(kind) : '—',
+        trip ? tripRouteReportLabel(trip) : '—',
+        trip ? (isRound ? trip.load1 || '—' : trip.from || '—') : '—',
+        trip ? (isRound ? trip.unload1 || '—' : trip.to || '—') : '—',
+        trip && kind === 'round2' ? trip.load2 || '—' : '—',
+        trip && kind === 'round2' ? trip.unload2 || '—' : '—',
         trip?.customer ?? '—',
         payment.counterparty,
         payMethodLabel[payment.method],
