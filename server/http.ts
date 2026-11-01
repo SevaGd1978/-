@@ -1,6 +1,6 @@
 import { createReadStream, existsSync, statSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { extname, join, normalize, sep } from 'node:path'
+import { basename, extname, join, normalize, sep } from 'node:path'
 import type { DatabaseSync } from 'node:sqlite'
 import type { PublicUser, Right } from '../src/access.ts'
 import { parseDriver, parseExpense, parsePayment, parseRepair, parseTrip, parseVehicle } from '../src/records.ts'
@@ -450,7 +450,40 @@ function safePath(root: string, pathname: string) {
 function sendFile(req: IncomingMessage, res: ServerResponse, file: string) {
   const type = TYPES[extname(file)] || 'application/octet-stream'
   const cache = file.endsWith('index.html') ? 'no-cache' : 'public, max-age=86400'
-  res.writeHead(req.method === 'HEAD' ? 200 : 200, { 'content-type': type, 'cache-control': cache })
+  const size = statSync(file).size
+  const headers: Record<string, string | number> = {
+    'content-type': type,
+    'content-length': size,
+    'cache-control': cache,
+    'accept-ranges': 'bytes',
+  }
+  if (file.includes(`${sep}downloads${sep}`) && !file.endsWith('.html')) {
+    headers['content-disposition'] = `attachment; filename="${basename(file)}"`
+  }
+  const range = req.headers.range
+  const match = typeof range === 'string' ? /^bytes=(\d*)-(\d*)$/.exec(range) : null
+  if (match && (match[1] || match[2])) {
+    const start = match[1] ? Number(match[1]) : Math.max(0, size - Number(match[2]))
+    const end = match[1] && match[2] ? Number(match[2]) : size - 1
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start > end || start >= size) {
+      res.writeHead(416, { 'content-range': `bytes */${size}` })
+      res.end()
+      return
+    }
+    const last = Math.min(end, size - 1)
+    res.writeHead(206, {
+      ...headers,
+      'content-length': last - start + 1,
+      'content-range': `bytes ${start}-${last}/${size}`,
+    })
+    if (req.method === 'HEAD') {
+      res.end()
+      return
+    }
+    createReadStream(file, { start, end: last }).pipe(res)
+    return
+  }
+  res.writeHead(200, headers)
   if (req.method === 'HEAD') {
     res.end()
     return
