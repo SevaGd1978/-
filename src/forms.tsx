@@ -22,7 +22,8 @@ import {
 } from './format'
 import { vehicleDuty } from './fleetStatus'
 import { uid, useData } from './store'
-import type { Driver, Payment, RepairJob, Trip, TripExpense, Vehicle } from './types'
+import type { Driver, Payment, RepairJob, Trip, TripExpense, TripRouteKind, Vehicle } from './types'
+import { finalizeTripRoute, tripRouteKindLabel, tripRouteLabel, validateTripRoute } from './tripRoute.ts'
 import { CityField } from './CityField'
 import { CustomerField } from './CustomerField'
 import { customerCatalog } from './customers'
@@ -36,6 +37,20 @@ function vehicleOption(vehicle: Vehicle, trips: Trip[]) {
 function amountText(value: number) {
   return value ? String(value) : ''
 }
+
+function odometerText(value: number | null | undefined) {
+  return value != null && value > 0 ? String(value) : ''
+}
+
+function validateOdometerSequence(values: (number | null)[]) {
+  const filled = values.filter((value): value is number => value != null)
+  for (let index = 1; index < filled.length; index += 1) {
+    if (filled[index] < filled[index - 1]) return 'Показания одометра должны расти по ходу рейса.'
+  }
+  return null
+}
+
+const routeKinds: TripRouteKind[] = ['direct', 'round1', 'round2']
 
 export function TripForm({
   initial,
@@ -51,8 +66,18 @@ export function TripForm({
   const { state } = useData()
   const [number, setNumber] = useState(initial?.number ?? nextTripNumber(state.trips))
   const [date, setDate] = useState(initial?.date ?? todayIso())
+  const [routeKind, setRouteKind] = useState<TripRouteKind>(initial?.routeKind ?? 'direct')
   const [from, setFrom] = useState(initial?.from ?? '')
   const [to, setTo] = useState(initial?.to ?? '')
+  const [load1, setLoad1] = useState(initial?.load1 ?? '')
+  const [unload1, setUnload1] = useState(initial?.unload1 ?? '')
+  const [load2, setLoad2] = useState(initial?.load2 ?? '')
+  const [unload2, setUnload2] = useState(initial?.unload2 ?? '')
+  const [returnCity, setReturnCity] = useState(initial?.returnCity ?? '')
+  const [odometerLoad1, setOdometerLoad1] = useState(odometerText(initial?.odometerLoad1))
+  const [odometerUnload1, setOdometerUnload1] = useState(odometerText(initial?.odometerUnload1))
+  const [odometerLoad2, setOdometerLoad2] = useState(odometerText(initial?.odometerLoad2))
+  const [odometerUnload2, setOdometerUnload2] = useState(odometerText(initial?.odometerUnload2))
   const [vehicleId, setVehicleId] = useState(initial?.vehicleId ?? '')
   const [driverId, setDriverId] = useState(initial?.driverId ?? '')
   const [customer, setCustomer] = useState(initial?.customer ?? '')
@@ -68,8 +93,51 @@ export function TripForm({
     event.preventDefault()
     const parsedRate = parseMoney(rate)
     const parsedWeight = parseWeight(weight)
-    if (!number.trim() || !date || !from.trim() || !to.trim() || !customer.trim() || !cargo.trim()) {
-      setError('Заполните номер, дату, маршрут, заказчика и груз.')
+    if (!number.trim() || !date || !customer.trim() || !cargo.trim()) {
+      setError('Заполните номер, дату, заказчика и груз.')
+      return
+    }
+    const routeError = validateTripRoute({
+      routeKind,
+      from,
+      to,
+      load1,
+      unload1,
+      load2,
+      unload2,
+    })
+    if (routeError) {
+      setError(routeError)
+      return
+    }
+    const parsedOdo1 = parseOdometer(odometerLoad1)
+    const parsedOdoU1 = parseOdometer(odometerUnload1)
+    const parsedOdo2 = parseOdometer(odometerLoad2)
+    const parsedOdoU2 = parseOdometer(odometerUnload2)
+    if (odometerLoad1.trim() && parsedOdo1 === null) {
+      setError('Одометр на погрузке укажите целым числом, км.')
+      return
+    }
+    if (odometerUnload1.trim() && parsedOdoU1 === null) {
+      setError('Одометр на выгрузке укажите целым числом, км.')
+      return
+    }
+    if (routeKind === 'round2') {
+      if (odometerLoad2.trim() && parsedOdo2 === null) {
+        setError('Одометр на второй погрузке укажите целым числом, км.')
+        return
+      }
+      if (odometerUnload2.trim() && parsedOdoU2 === null) {
+        setError('Одометр на второй выгрузке укажите целым числом, км.')
+        return
+      }
+    }
+    const odoSeq =
+      routeKind === 'round2'
+        ? validateOdometerSequence([parsedOdo1, parsedOdoU1, parsedOdo2, parsedOdoU2])
+        : validateOdometerSequence([parsedOdo1, parsedOdoU1])
+    if (odoSeq) {
+      setError(odoSeq)
       return
     }
     if (!vehicleId || !driverId) {
@@ -88,22 +156,34 @@ export function TripForm({
       setError('Выберите статус рейса.')
       return
     }
-    onSubmit({
-      id: initial?.id || uid('t'),
-      number: number.trim(),
-      date,
-      from: from.trim(),
-      to: to.trim(),
-      vehicleId,
-      driverId,
-      customer: customer.trim(),
-      cargo: cargo.trim(),
-      weightTons: parsedWeight,
-      rate: parsedRate,
-      payDue,
-      status,
-      note: note.trim(),
-    })
+    onSubmit(
+      finalizeTripRoute({
+        id: initial?.id || uid('t'),
+        number: number.trim(),
+        date,
+        from: from.trim(),
+        to: to.trim(),
+        routeKind,
+        load1: load1.trim(),
+        unload1: unload1.trim(),
+        load2: load2.trim(),
+        unload2: unload2.trim(),
+        returnCity: returnCity.trim(),
+        odometerLoad1: parsedOdo1,
+        odometerUnload1: parsedOdoU1,
+        odometerLoad2: routeKind === 'round2' ? parsedOdo2 : null,
+        odometerUnload2: routeKind === 'round2' ? parsedOdoU2 : null,
+        vehicleId,
+        driverId,
+        customer: customer.trim(),
+        cargo: cargo.trim(),
+        weightTons: parsedWeight,
+        rate: parsedRate,
+        payDue,
+        status,
+        note: note.trim(),
+      }),
+    )
   }
 
   return (
@@ -114,8 +194,87 @@ export function TripForm({
       <Field label="Дата выхода">
         <input type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
       </Field>
-      <CityField label="Откуда" value={from} onChange={setFrom} placeholder="Казань" />
-      <CityField label="Куда" value={to} onChange={setTo} placeholder="Пермь" />
+      <Field label="Тип маршрута" wide>
+        <select value={routeKind} onChange={(event) => setRouteKind(event.target.value as TripRouteKind)}>
+          {routeKinds.map((kind) => (
+            <option key={kind} value={kind}>
+              {tripRouteKindLabel(kind)}
+            </option>
+          ))}
+        </select>
+      </Field>
+      {routeKind === 'direct' ? (
+        <>
+          <CityField label="Откуда" value={from} onChange={setFrom} placeholder="Казань" />
+          <CityField label="Куда" value={to} onChange={setTo} placeholder="Пермь" />
+          <Field label="Одометр на погрузке, км">
+            <input
+              inputMode="numeric"
+              value={odometerLoad1}
+              onChange={(event) => setOdometerLoad1(event.target.value)}
+              placeholder="Необязательно"
+            />
+          </Field>
+          <Field label="Одометр на выгрузке, км">
+            <input
+              inputMode="numeric"
+              value={odometerUnload1}
+              onChange={(event) => setOdometerUnload1(event.target.value)}
+              placeholder="Необязательно"
+            />
+          </Field>
+        </>
+      ) : (
+        <>
+          <CityField label="База выезда" value={from} onChange={setFrom} placeholder="Казань" />
+          <CityField label="Погрузка 1" value={load1} onChange={setLoad1} placeholder="Нижний Новгород" />
+          <Field label="Одометр · погрузка 1, км">
+            <input
+              inputMode="numeric"
+              value={odometerLoad1}
+              onChange={(event) => setOdometerLoad1(event.target.value)}
+              placeholder="Необязательно"
+            />
+          </Field>
+          <CityField label="Выгрузка 1" value={unload1} onChange={setUnload1} placeholder="Самара" />
+          <Field label="Одометр · выгрузка 1, км">
+            <input
+              inputMode="numeric"
+              value={odometerUnload1}
+              onChange={(event) => setOdometerUnload1(event.target.value)}
+              placeholder="Необязательно"
+            />
+          </Field>
+          {routeKind === 'round2' ? (
+            <>
+              <CityField label="Погрузка 2" value={load2} onChange={setLoad2} placeholder="Уфа" />
+              <Field label="Одометр · погрузка 2, км">
+                <input
+                  inputMode="numeric"
+                  value={odometerLoad2}
+                  onChange={(event) => setOdometerLoad2(event.target.value)}
+                  placeholder="Необязательно"
+                />
+              </Field>
+              <CityField label="Выгрузка 2" value={unload2} onChange={setUnload2} placeholder="Челябинск" />
+              <Field label="Одометр · выгрузка 2, км">
+                <input
+                  inputMode="numeric"
+                  value={odometerUnload2}
+                  onChange={(event) => setOdometerUnload2(event.target.value)}
+                  placeholder="Необязательно"
+                />
+              </Field>
+            </>
+          ) : null}
+          <CityField
+            label="Возврат на базу"
+            value={returnCity}
+            onChange={setReturnCity}
+            placeholder={from.trim() || 'Как база выезда'}
+          />
+        </>
+      )}
       <Field label="Машина">
         <select value={vehicleId} onChange={(event) => setVehicleId(event.target.value)}>
           <option value="">Выберите машину</option>
@@ -596,7 +755,7 @@ export function PaymentForm({
     <form className="form-grid" onSubmit={submit}>
       {fixedTripId && trip ? (
         <Field label="Рейс" wide>
-          <input value={`${trip.number} · ${trip.from} → ${trip.to}`} readOnly />
+          <input value={`${trip.number} · ${tripRouteLabel(trip)}`} readOnly />
         </Field>
       ) : (
         <Field label="Рейс" wide>

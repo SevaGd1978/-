@@ -13,7 +13,9 @@ import {
 import { CopyTripDrawer, PaymentForm, TripForm } from '../forms'
 import { RoadMap } from '../RoadMap'
 import { useAuth } from '../auth'
-import { federalLabel, legKey, roadDetail } from '../roads'
+import { federalLabel, legKey } from '../roads'
+import { formatOdometer, tripOdometerKm, tripRoadPairs, tripRouteKindLabel, tripRouteLabel } from '../tripRoute.ts'
+import { tripRouteDetail } from '../tripRouteRoad.ts'
 import { useData } from '../store'
 import { useRoadRoutes } from '../useRoutes'
 import type { Payment, Trip, TripStatus } from '../types'
@@ -29,10 +31,7 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
   const [copying, setCopying] = useState(false)
   const [paymentEditor, setPaymentEditor] = useState<Payment | 'new' | null>(null)
   const [confirm, setConfirm] = useState<{ text: string; confirmLabel: string; run: () => void } | null>(null)
-  const routePairs = useMemo(
-    () => (trip ? [{ from: trip.from, to: trip.to }] : []),
-    [trip],
-  )
+  const routePairs = useMemo(() => (trip ? tripRoadPairs(trip) : []), [trip])
   const { routes, ready } = useRoadRoutes(routePairs)
 
   if (!trip) {
@@ -49,7 +48,8 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
   const paid = sumAmounts(payments)
   const debt = debtOf(trip, paid)
   const overdue = isOverdue(trip, debt, todayIso())
-  const leg = routes[legKey(trip.from, trip.to)]
+  const firstLeg = routePairs[0] ? routes[legKey(routePairs[0].from, routePairs[0].to)] : undefined
+  const odometerRun = tripOdometerKm(trip)
 
   function changeStatus(status: TripStatus) {
     void saveTrip({ ...trip!, status })
@@ -94,13 +94,14 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
 
       <section className="card hero">
         <div className="card-top">
-          <div className="route route-hero">
-            <span>{trip.from}</span>
-            <span className="route-line" />
-            <span>{trip.to}</span>
+          <div className="route route-hero route-hero-long">
+            <span className="route-text">{tripRouteLabel(trip)}</span>
           </div>
           <Badge tone={tripTone(trip.status)}>{tripStatusLabel[trip.status]}</Badge>
         </div>
+        {(trip.routeKind ?? 'direct') !== 'direct' ? (
+          <p className="muted">{tripRouteKindLabel(trip.routeKind ?? 'direct')}</p>
+        ) : null}
         <p className="muted">
           {dateRu(trip.date)} · {trip.customer} · {trip.cargo}
           {trip.weightTons ? ` · ${tons(trip.weightTons)}` : ''}
@@ -130,11 +131,23 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
         ) : null}
         {overdue ? <p className="banner banner-bad">Срок оплаты {dateRu(trip.payDue)} прошёл, к оплате {money(debt)}.</p> : null}
         <p>
-          По автодорогам: {roadDetail(leg, ready)}
-          {federalLabel(leg?.federalKm) ? ` · ${federalLabel(leg?.federalKm)}` : ''}
+          По автодорогам: {tripRouteDetail(routes, ready, trip)}
+          {federalLabel(firstLeg?.federalKm) ? ` · ${federalLabel(firstLeg?.federalKm)}` : ''}
         </p>
-        {leg?.geometry ? <RoadMap geometry={leg.geometry} /> : null}
-        {leg?.geometry ? <p className="road-note">Километраж по автодорогам OpenStreetMap, карта © OpenStreetMap.</p> : null}
+        <p className="muted">
+          Одометр: погрузка {formatOdometer(trip.odometerLoad1)}, выгрузка {formatOdometer(trip.odometerUnload1)}
+          {(trip.routeKind ?? 'direct') === 'round2'
+            ? ` · погрузка 2 ${formatOdometer(trip.odometerLoad2)}, выгрузка 2 ${formatOdometer(trip.odometerUnload2)}`
+            : ''}
+          {odometerRun != null ? ` · пробег ${odometerRun.toLocaleString('ru-RU')} км` : ''}
+        </p>
+        {firstLeg?.geometry ? <RoadMap geometry={firstLeg.geometry} /> : null}
+        {firstLeg?.geometry ? (
+          <p className="road-note">
+            Карта первого плеча. Километраж по OpenStreetMap, © OpenStreetMap.
+            {routePairs.length > 1 ? ` Всего плеч: ${routePairs.length}.` : ''}
+          </p>
+        ) : null}
       </section>
 
       <section className="econ">

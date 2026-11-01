@@ -26,7 +26,10 @@ function rowNumber(rows: (string | number | null)[][], marker: string, index: nu
 
 const trips = section('trips')
 assert.equal(trips.section.rows.length, 6)
-assert.equal(trips.section.columns.slice(12).map((column) => column.title).join(', '), 'Зарплата, Топливо, Платные дороги, Расходы')
+assert.equal(
+  trips.section.columns.slice(12).map((column) => column.title).join(', '),
+  'Зарплата, Топливо, Платные дороги, Расходы, Одометр погр., Одометр выгр., Пробег одом.',
+)
 assert.equal(rowNumber(trips.section.rows, 'Р-1034', 9), 86000)
 assert.equal(rowNumber(trips.section.rows, 'Р-1034', 10), 20000)
 assert.equal(rowNumber(trips.section.rows, 'Р-1034', 11), 66000)

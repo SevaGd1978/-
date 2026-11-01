@@ -4,6 +4,7 @@ import { dateRu, money, payMethodLabel, todayIso } from '../format'
 import { PaymentForm } from '../forms'
 import { useAuth } from '../auth'
 import { useData } from '../store'
+import { tripRouteLabel } from '../tripRoute.ts'
 import type { Payment } from '../types'
 import { Badge, ConfirmDialog, Drawer, Empty } from '../ui'
 
@@ -97,7 +98,7 @@ export function PaymentsPage({ onOpenTrip }: { onOpenTrip: (id: string) => void 
                         {row.trip.number}
                       </button>
                       <small className="muted">
-                        {row.trip.from} → {row.trip.to}
+                        {tripRouteLabel(row.trip)}
                       </small>
                     </td>
                     <td>{row.trip.customer}</td>

@@ -1,4 +1,5 @@
 import { debtOf, expenseVat, expenseWithVat, inRange, isOverdue, repairCost, round2, sumAmounts, sumExpenses } from '../calc'
+import { formatOdometer, tripOdometerKm, tripRouteLabel } from '../tripRoute.ts'
 import {
   dateRu,
   expenseCategories,
@@ -368,6 +369,9 @@ function tripSection(state: State, from: string, to: string): ReportSection {
     column('Топливо', 'right', 14, 'money'),
     column('Платные дороги', 'right', 16, 'money'),
     column('Расходы', 'right', 14, 'money'),
+    column('Одометр погр.', 'right', 14, 'text'),
+    column('Одометр выгр.', 'right', 14, 'text'),
+    column('Пробег одом.', 'right', 14, 'text'),
   ]
   const rows = state.trips
     .filter((trip) => inRange(trip.date, from, to))
@@ -378,7 +382,7 @@ function tripSection(state: State, from: string, to: string): ReportSection {
       return [
         dateRu(trip.date),
         trip.number,
-        `${trip.from} – ${trip.to}`,
+        tripRouteLabel(trip),
         trip.customer,
         trip.cargo,
         trip.weightTons,
@@ -392,6 +396,13 @@ function tripSection(state: State, from: string, to: string): ReportSection {
         costs.fuel,
         costs.toll,
         costs.spend,
+        formatOdometer(trip.odometerLoad1),
+        formatOdometer(
+          (trip.routeKind ?? 'direct') === 'round2' && trip.odometerUnload2 != null
+            ? trip.odometerUnload2
+            : trip.odometerUnload1,
+        ),
+        tripOdometerKm(trip) != null ? `${tripOdometerKm(trip)!.toLocaleString('ru-RU')} км` : '—',
       ]
     })
   return { title: 'Рейсы', columns, rows, totals: totalRow(rows, columns) }
@@ -483,7 +494,7 @@ function paymentSection(state: State, from: string, to: string): ReportSection {
       return [
         dateRu(payment.date),
         trip?.number ?? '—',
-        trip ? `${trip.from} – ${trip.to}` : '—',
+        trip ? tripRouteLabel(trip) : '—',
         trip?.customer ?? '—',
         payment.counterparty,
         payMethodLabel[payment.method],

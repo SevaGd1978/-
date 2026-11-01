@@ -7,6 +7,16 @@ const base = {
   date: '2026-10-21',
   from: 'Казань',
   to: 'Пермь',
+  routeKind: 'direct',
+  load1: '',
+  unload1: '',
+  load2: '',
+  unload2: '',
+  returnCity: '',
+  odometerLoad1: null,
+  odometerUnload1: null,
+  odometerLoad2: null,
+  odometerUnload2: null,
   vehicleId: 'v1',
   driverId: 'd1',
   customer: 'ООО «Теплосеть»',
@@ -26,6 +36,18 @@ assert.equal(dated?.payDue, '2026-11-01')
 
 assert.equal(parseTrip({ ...base, payDue: 'завтра' }), null)
 assert.equal(parseTrip({ ...base, id: '' }), null)
+
+const round = parseTrip({
+  ...base,
+  to: '',
+  routeKind: 'round1',
+  load1: 'Самара',
+  unload1: 'Уфа',
+  odometerLoad1: 50000,
+  odometerUnload1: 50200,
+})
+assert.equal(round?.to, 'Казань')
+assert.equal(round?.odometerLoad1, 50000)
 
 const toll = parseExpense({
   id: 'e_toll',

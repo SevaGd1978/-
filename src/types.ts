@@ -1,5 +1,8 @@
 export type TripStatus = 'planned' | 'loading' | 'in_transit' | 'delivered' | 'closed' | 'cancelled'
 
+/** Прямой рейс или круг с одной или двумя парами «загрузка → выгрузка». */
+export type TripRouteKind = 'direct' | 'round1' | 'round2'
+
 export type ExpenseCategory = 'fuel' | 'toll' | 'platon' | 'workshop' | 'driver' | 'salary' | 'loading' | 'parking' | 'other'
 
 export type RepairKind = 'maintenance' | 'repair' | 'tires' | 'parts' | 'body'
@@ -32,6 +35,25 @@ export interface Trip {
   date: string
   from: string
   to: string
+  routeKind: TripRouteKind
+  /** Город первой погрузки (кругорейс). */
+  load1: string
+  /** Город первой выгрузки (кругорейс). */
+  unload1: string
+  /** Город второй погрузки (кругорейс ×2). */
+  load2: string
+  /** Город второй выгрузки (кругорейс ×2). */
+  unload2: string
+  /** Куда возвращается машина; по умолчанию база выезда. */
+  returnCity: string
+  /** Одометр на первой погрузке (прямой рейс и кругорейс). */
+  odometerLoad1: number | null
+  /** Одометр на первой выгрузке. */
+  odometerUnload1: number | null
+  /** Одометр на второй погрузке (кругорейс ×2). */
+  odometerLoad2: number | null
+  /** Одометр на второй выгрузке (кругорейс ×2). */
+  odometerUnload2: number | null
   vehicleId: string
   driverId: string
   customer: string

@@ -15,6 +15,7 @@ import {
   tripsAwaitingPayment,
 } from '../format'
 import { useData } from '../store'
+import { tripRouteLabel } from '../tripRoute.ts'
 import { Badge, Empty } from '../ui'
 
 export function Dashboard({ onOpenTrip }: { onOpenTrip: (id: string) => void }) {
@@ -148,7 +149,7 @@ export function Dashboard({ onOpenTrip }: { onOpenTrip: (id: string) => void }) 
                   <Badge tone={tripTone(row.trip.status)}>{tripStatusLabel[row.trip.status]}</Badge>
                 </div>
                 <div>
-                  {row.trip.from} → {row.trip.to}
+                  {tripRouteLabel(row.trip)}
                 </div>
                 <div className="muted">
                   {dateRu(row.trip.date)} · {row.trip.customer} · долг {money(row.debt)}

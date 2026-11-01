@@ -11,7 +11,9 @@ import {
 import { CopyTripDrawer, TripForm } from '../forms'
 import { RoadMap } from '../RoadMap'
 import { useAuth } from '../auth'
-import { federalLabel, legKey, roadDetail, roadKm } from '../roads'
+import { federalLabel, legKey } from '../roads'
+import { tripRoadPairs, tripRouteLabel, tripRouteSearchText } from '../tripRoute.ts'
+import { tripRouteDetail, tripRouteDistance } from '../tripRouteRoad.ts'
 import { useData } from '../store'
 import { useRoadRoutes } from '../useRoutes'
 import type { Trip, TripStatus } from '../types'
@@ -32,10 +34,7 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
     setCreating(false)
     setCopySource(trip)
   }
-  const routePairs = useMemo(
-    () => state.trips.map((trip) => ({ from: trip.from, to: trip.to })),
-    [state.trips],
-  )
+  const routePairs = useMemo(() => state.trips.flatMap((trip) => tripRoadPairs(trip)), [state.trips])
   const { routes, ready } = useRoadRoutes(routePairs)
 
   const rows = useMemo(() => {
@@ -64,8 +63,7 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
         if (!needle) return true
         const haystack = [
           row.trip.number,
-          row.trip.from,
-          row.trip.to,
+          tripRouteSearchText(row.trip),
           row.trip.customer,
           row.trip.cargo,
           row.driver?.name ?? '',
@@ -184,14 +182,12 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
                             {row.trip.number}
                           </button>
                         </td>
-                        <td>
-                          {row.trip.from} — {row.trip.to}
-                        </td>
+                        <td title={tripRouteLabel(row.trip)}>{tripRouteLabel(row.trip)}</td>
                         <td title={row.vehicle ? `${row.vehicle.plate} · ${row.vehicle.model}` : undefined}>
                           {row.vehicle?.plate || '—'}
                         </td>
                         <td>{row.driver?.name || '—'}</td>
-                        <td className="num">{roadKm(routes[legKey(row.trip.from, row.trip.to)], ready)}</td>
+                        <td className="num">{tripRouteDistance(routes, ready, row.trip)}</td>
                         <td>
                           <Badge tone={tripTone(row.trip.status)}>{tripStatusLabel[row.trip.status]}</Badge>
                         </td>
@@ -216,8 +212,8 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
                 <TripCard
                   number={selected.trip.number}
                   customer={selected.trip.customer}
-                  route={`${selected.trip.from} — ${selected.trip.to}`}
-                  distance={roadDetail(routes[legKey(selected.trip.from, selected.trip.to)], ready)}
+                  route={tripRouteLabel(selected.trip)}
+                  distance={tripRouteDetail(routes, ready, selected.trip)}
                   federal={federalLabel(routes[legKey(selected.trip.from, selected.trip.to)]?.federalKm)}
                   geometry={routes[legKey(selected.trip.from, selected.trip.to)]?.geometry ?? null}
                   cargo={selected.trip.cargo}

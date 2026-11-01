@@ -273,6 +273,8 @@ button.cost-card:hover { border-color: var(--ink); }
 .route { display: flex; align-items: center; gap: 8px; font-weight: 750; }
 .route-line { flex: 1; height: 2px; min-width: 24px; background: linear-gradient(90deg, transparent, var(--accent), transparent); }
 .route-hero { font-family: var(--display); font-size: 26px; font-weight: 500; letter-spacing: -0.03em; }
+.route-hero-long { display: block; font-size: 20px; line-height: 1.35; }
+.route-hero-long .route-text { display: block; max-width: 100%; }
 .money-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding-top: 4px; }
 .money-row strong { display: block; }
 .overdue-line { color: var(--bad); font-size: 13px; font-weight: 700; }

@@ -1,4 +1,34 @@
-import type { State } from './types'
+import type { State, Trip } from './types'
+
+function directTrip(
+  trip: Omit<
+    Trip,
+    | 'routeKind'
+    | 'load1'
+    | 'unload1'
+    | 'load2'
+    | 'unload2'
+    | 'returnCity'
+    | 'odometerLoad1'
+    | 'odometerUnload1'
+    | 'odometerLoad2'
+    | 'odometerUnload2'
+  >,
+): Trip {
+  return {
+    ...trip,
+    routeKind: 'direct',
+    load1: '',
+    unload1: '',
+    load2: '',
+    unload2: '',
+    returnCity: '',
+    odometerLoad1: null,
+    odometerUnload1: null,
+    odometerLoad2: null,
+    odometerUnload2: null,
+  }
+}
 
 export function createSeed(): State {
   return {
@@ -15,7 +45,7 @@ export function createSeed(): State {
       { id: 'd4', name: 'Кузнецов Дмитрий', phone: '+7 987 220-66-05' },
     ],
     trips: [
-      {
+      directTrip({
         id: 't1',
         number: 'Р-1034',
         date: '2026-10-16',
@@ -30,8 +60,8 @@ export function createSeed(): State {
         payDue: '2026-10-25',
         status: 'in_transit',
         note: 'Разгрузка на объекте до 18:00, пропуск заказан.',
-      },
-      {
+      }),
+      directTrip({
         id: 't2',
         number: 'Р-1035',
         date: '2026-10-04',
@@ -46,8 +76,8 @@ export function createSeed(): State {
         payDue: '2026-10-11',
         status: 'delivered',
         note: '',
-      },
-      {
+      }),
+      directTrip({
         id: 't3',
         number: 'Р-1036',
         date: '2026-10-07',
@@ -62,8 +92,8 @@ export function createSeed(): State {
         payDue: '2026-10-21',
         status: 'delivered',
         note: 'Ждём доплату по акту.',
-      },
-      {
+      }),
+      directTrip({
         id: 't4',
         number: 'Р-1037',
         date: '2026-10-15',
@@ -78,8 +108,8 @@ export function createSeed(): State {
         payDue: '2026-10-12',
         status: 'loading',
         note: 'Срок оплаты уже прошёл, счёт отправлен повторно.',
-      },
-      {
+      }),
+      directTrip({
         id: 't5',
         number: 'Р-1038',
         date: '2026-10-18',
@@ -94,8 +124,8 @@ export function createSeed(): State {
         payDue: '2026-10-30',
         status: 'planned',
         note: '',
-      },
-      {
+      }),
+      directTrip({
         id: 't6',
         number: 'Р-1039',
         date: '2026-09-18',
@@ -110,8 +140,8 @@ export function createSeed(): State {
         payDue: '2026-09-28',
         status: 'closed',
         note: '',
-      },
-      {
+      }),
+      directTrip({
         id: 't7',
         number: 'Р-1040',
         date: '2026-09-25',
@@ -126,8 +156,8 @@ export function createSeed(): State {
         payDue: '2026-10-05',
         status: 'closed',
         note: '',
-      },
-      {
+      }),
+      directTrip({
         id: 't8',
         number: 'Р-1041',
         date: '2026-10-11',
@@ -142,7 +172,7 @@ export function createSeed(): State {
         payDue: '2026-10-18',
         status: 'cancelled',
         note: 'Заказчик отменил отгрузку после выезда со стоянки.',
-      },
+      }),
     ],
     expenses: [
       { id: 'e1', vehicleId: '', tripId: 't1', date: '2026-10-16', category: 'fuel', amount: 18500, comment: 'АЗС Татнефть, 420 л' },

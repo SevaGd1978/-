@@ -97,6 +97,7 @@ export function openDatabase(file: string): Sql {
   ensureVehicleSts(db)
   ensureExpenseVehicle(db)
   ensureExpenseVat(db)
+  ensureTripRoute(db)
   ensureRoadCache(db)
   ensureAccounts(db)
   rememberTripCustomers(db)
@@ -169,20 +170,36 @@ export function saveTrip(db: Sql, trip: Trip): DbResult {
     const position = nextPosition(db, 'trips', trip.id)
     db.prepare(
       `INSERT INTO trips (
-         id, number, date, from_city, to_city, vehicle_id, driver_id, customer, cargo,
-         weight_tons, rate, pay_due, status, note, position
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         id, number, date, from_city, to_city, route_kind, load1_city, unload1_city, load2_city, unload2_city,
+         return_city, odometer_load1, odometer_unload1, odometer_load2, odometer_unload2,
+         vehicle_id, driver_id, customer, cargo, weight_tons, rate, pay_due, status, note, position
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          number = excluded.number, date = excluded.date, from_city = excluded.from_city,
-         to_city = excluded.to_city, vehicle_id = excluded.vehicle_id, driver_id = excluded.driver_id,
-         customer = excluded.customer, cargo = excluded.cargo, weight_tons = excluded.weight_tons,
-         rate = excluded.rate, pay_due = excluded.pay_due, status = excluded.status, note = excluded.note`,
+         to_city = excluded.to_city, route_kind = excluded.route_kind, load1_city = excluded.load1_city,
+         unload1_city = excluded.unload1_city, load2_city = excluded.load2_city, unload2_city = excluded.unload2_city,
+         return_city = excluded.return_city, odometer_load1 = excluded.odometer_load1,
+         odometer_unload1 = excluded.odometer_unload1, odometer_load2 = excluded.odometer_load2,
+         odometer_unload2 = excluded.odometer_unload2, vehicle_id = excluded.vehicle_id,
+         driver_id = excluded.driver_id, customer = excluded.customer, cargo = excluded.cargo,
+         weight_tons = excluded.weight_tons, rate = excluded.rate, pay_due = excluded.pay_due,
+         status = excluded.status, note = excluded.note`,
     ).run(
       trip.id,
       trip.number,
       trip.date,
       trip.from,
       trip.to,
+      trip.routeKind ?? 'direct',
+      trip.load1 ?? '',
+      trip.unload1 ?? '',
+      trip.load2 ?? '',
+      trip.unload2 ?? '',
+      trip.returnCity ?? '',
+      trip.odometerLoad1,
+      trip.odometerUnload1,
+      trip.odometerLoad2,
+      trip.odometerUnload2,
       trip.vehicleId,
       trip.driverId,
       trip.customer,
@@ -394,9 +411,10 @@ function insertDrivers(db: Sql, rows: Driver[]) {
 function insertTrips(db: Sql, rows: Trip[]) {
   const stmt = db.prepare(
     `INSERT INTO trips (
-       id, number, date, from_city, to_city, vehicle_id, driver_id, customer, cargo,
-       weight_tons, rate, pay_due, status, note, position
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       id, number, date, from_city, to_city, route_kind, load1_city, unload1_city, load2_city, unload2_city,
+       return_city, odometer_load1, odometer_unload1, odometer_load2, odometer_unload2,
+       vehicle_id, driver_id, customer, cargo, weight_tons, rate, pay_due, status, note, position
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   rows.forEach((row, index) =>
     stmt.run(
@@ -405,6 +423,16 @@ function insertTrips(db: Sql, rows: Trip[]) {
       row.date,
       row.from,
       row.to,
+      row.routeKind ?? 'direct',
+      row.load1 ?? '',
+      row.unload1 ?? '',
+      row.load2 ?? '',
+      row.unload2 ?? '',
+      row.returnCity ?? '',
+      row.odometerLoad1,
+      row.odometerUnload1,
+      row.odometerLoad2,
+      row.odometerUnload2,
       row.vehicleId,
       row.driverId,
       row.customer,
@@ -557,6 +585,21 @@ function ensureExpenseVat(db: Sql) {
   db.exec(`ALTER TABLE expenses ADD COLUMN vat REAL`)
 }
 
+function ensureTripRoute(db: Sql) {
+  const columns = db.prepare(`PRAGMA table_info(trips)`).all() as { name: string }[]
+  const names = new Set(columns.map((column) => column.name))
+  if (!names.has('route_kind')) db.exec(`ALTER TABLE trips ADD COLUMN route_kind TEXT NOT NULL DEFAULT 'direct'`)
+  if (!names.has('load1_city')) db.exec(`ALTER TABLE trips ADD COLUMN load1_city TEXT NOT NULL DEFAULT ''`)
+  if (!names.has('unload1_city')) db.exec(`ALTER TABLE trips ADD COLUMN unload1_city TEXT NOT NULL DEFAULT ''`)
+  if (!names.has('load2_city')) db.exec(`ALTER TABLE trips ADD COLUMN load2_city TEXT NOT NULL DEFAULT ''`)
+  if (!names.has('unload2_city')) db.exec(`ALTER TABLE trips ADD COLUMN unload2_city TEXT NOT NULL DEFAULT ''`)
+  if (!names.has('return_city')) db.exec(`ALTER TABLE trips ADD COLUMN return_city TEXT NOT NULL DEFAULT ''`)
+  if (!names.has('odometer_load1')) db.exec(`ALTER TABLE trips ADD COLUMN odometer_load1 REAL`)
+  if (!names.has('odometer_unload1')) db.exec(`ALTER TABLE trips ADD COLUMN odometer_unload1 REAL`)
+  if (!names.has('odometer_load2')) db.exec(`ALTER TABLE trips ADD COLUMN odometer_load2 REAL`)
+  if (!names.has('odometer_unload2')) db.exec(`ALTER TABLE trips ADD COLUMN odometer_unload2 REAL`)
+}
+
 function unbindSharedCosts(db: Sql) {
   const removed = db.prepare(`DELETE FROM expenses WHERE id LIKE 'platon\\_%' ESCAPE '\\'`).run()
   const expenses = db
@@ -591,7 +634,14 @@ function readState(db: Sql): State {
     drivers: db.prepare(`SELECT id, name, phone FROM drivers ORDER BY position DESC`).all() as unknown as Driver[],
     trips: db
       .prepare(
-        `SELECT id, number, date, from_city AS "from", to_city AS "to", vehicle_id AS vehicleId, driver_id AS driverId,
+        `SELECT id, number, date, from_city AS "from", to_city AS "to",
+                COALESCE(route_kind, 'direct') AS routeKind,
+                COALESCE(load1_city, '') AS load1, COALESCE(unload1_city, '') AS unload1,
+                COALESCE(load2_city, '') AS load2, COALESCE(unload2_city, '') AS unload2,
+                COALESCE(return_city, '') AS returnCity,
+                odometer_load1 AS odometerLoad1, odometer_unload1 AS odometerUnload1,
+                odometer_load2 AS odometerLoad2, odometer_unload2 AS odometerUnload2,
+                vehicle_id AS vehicleId, driver_id AS driverId,
                 customer, cargo, weight_tons AS weightTons, rate, pay_due AS payDue, status, note
          FROM trips ORDER BY position DESC`,
       )

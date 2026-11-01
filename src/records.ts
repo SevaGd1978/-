@@ -1,3 +1,4 @@
+import { finalizeTripRoute, parseRouteKind, validateTripRoute } from './tripRoute.ts'
 import type {
   Driver,
   ExpenseCategory,
@@ -9,6 +10,7 @@ import type {
   ParkStatus,
   Trip,
   TripExpense,
+  TripRouteKind,
   TripStatus,
   Vehicle,
 } from './types'
@@ -46,6 +48,12 @@ function optionalText(value: unknown, max: number): string | null {
   if (value == null) return ''
   if (typeof value !== 'string' || value.length > max) return null
   return value.trim()
+}
+
+function tripOdometerField(value: unknown): number | null | undefined {
+  if (value == null || value === '') return null
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 10_000_000) return undefined
+  return Math.round(value)
 }
 
 function id(value: unknown): string | null {
@@ -123,12 +131,33 @@ export function parseTrip(value: unknown): Trip | null {
   if (!row) return null
   const status = row.status
   const note = optionalText(row.note, 2000)
+  const routeKind = parseRouteKind(row.routeKind)
+  const load1 = optionalText(row.load1, 80)
+  const unload1 = optionalText(row.unload1, 80)
+  const load2 = optionalText(row.load2, 80)
+  const unload2 = optionalText(row.unload2, 80)
+  const returnCity = optionalText(row.returnCity, 80)
+  const odometerLoad1 = tripOdometerField(row.odometerLoad1)
+  const odometerUnload1 = tripOdometerField(row.odometerUnload1)
+  const odometerLoad2 = tripOdometerField(row.odometerLoad2)
+  const odometerUnload2 = tripOdometerField(row.odometerUnload2)
+  const to = routeKind === 'direct' ? text(row.to, 80) : optionalText(row.to, 80)
   const parsed = {
     id: id(row.id),
     number: text(row.number, 32),
     date: day(row.date),
     from: text(row.from, 80),
-    to: text(row.to, 80),
+    to,
+    routeKind: routeKind as TripRouteKind,
+    load1,
+    unload1,
+    load2,
+    unload2,
+    returnCity,
+    odometerLoad1,
+    odometerUnload1,
+    odometerLoad2,
+    odometerUnload2,
     vehicleId: id(row.vehicleId),
     driverId: id(row.driverId),
     customer: text(row.customer, 160),
@@ -144,7 +173,16 @@ export function parseTrip(value: unknown): Trip | null {
     !parsed.number ||
     !parsed.date ||
     !parsed.from ||
-    !parsed.to ||
+    parsed.to == null ||
+    parsed.odometerLoad1 === undefined ||
+    parsed.odometerUnload1 === undefined ||
+    parsed.odometerLoad2 === undefined ||
+    parsed.odometerUnload2 === undefined ||
+    parsed.load1 == null ||
+    parsed.unload1 == null ||
+    parsed.load2 == null ||
+    parsed.unload2 == null ||
+    parsed.returnCity == null ||
     !parsed.vehicleId ||
     !parsed.driverId ||
     !parsed.customer ||
@@ -157,12 +195,22 @@ export function parseTrip(value: unknown): Trip | null {
   ) {
     return null
   }
-  return {
+  const draft: Trip = {
     id: parsed.id,
     number: parsed.number,
     date: parsed.date,
     from: parsed.from,
     to: parsed.to,
+    routeKind: parsed.routeKind,
+    load1: parsed.load1,
+    unload1: parsed.unload1,
+    load2: parsed.load2,
+    unload2: parsed.unload2,
+    returnCity: parsed.returnCity,
+    odometerLoad1: parsed.odometerLoad1,
+    odometerUnload1: parsed.odometerUnload1,
+    odometerLoad2: parsed.odometerLoad2,
+    odometerUnload2: parsed.odometerUnload2,
     vehicleId: parsed.vehicleId,
     driverId: parsed.driverId,
     customer: parsed.customer,
@@ -173,6 +221,8 @@ export function parseTrip(value: unknown): Trip | null {
     status: parsed.status,
     note: parsed.note,
   }
+  if (validateTripRoute(draft)) return null
+  return finalizeTripRoute(draft)
 }
 
 export function parseExpense(value: unknown): TripExpense | null {
