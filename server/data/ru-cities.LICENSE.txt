@@ -1,0 +1,7 @@
+Города России (название, регион, координаты центра, население) собраны из справочника hflabs/city:
+https://github.com/hflabs/city
+
+Лицензия данных: Creative Commons Attribution-ShareAlike 4.0 International
+https://creativecommons.org/licenses/by-sa/4.0/
+
+Координаты в исходном справочнике получены из сервиса DaData. Население и состав списка городов — по данным, указанным в том справочнике (в том числе по списку городов Википедии).
