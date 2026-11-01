@@ -59,7 +59,7 @@ export const reportCatalog: { kind: ReportKind; label: string; text: string }[] 
   {
     kind: 'trips',
     label: 'Рейсы',
-    text: 'Реестр рейсов и сводки по заказчикам, водителям, машинам и статусам.',
+    text: 'Реестр рейсов. В строке — ставка, оплата, долг, зарплата, топливо и платные дороги по расходам рейса.',
   },
   {
     kind: 'expenses',
@@ -96,7 +96,7 @@ const notes: Record<ReportKind, string> = {
   summary:
     'Результат = получено − расходы − ремзона. Долг считается по дате выхода рейса, с учётом всех оплат. Статьи затрат и ремзона — по своим датам.',
   trips:
-    'Рейсы отобраны по дате выхода. Оплаты в реестре и сводках показаны целиком, даже если часть из них попала в другой месяц.',
+    'Рейсы отобраны по дате выхода. Оплаты показаны целиком, даже если часть попала в другой месяц. Зарплата, топливо и платные дороги — из расходов, привязанных к рейсу, с тем же учётом НДС, что в приложении. «Расходы» — сумма всех таких строк.',
   expenses:
     'Строки отобраны по дате расхода. Топливо, Платон, ремзона и платные дороги записаны отдельно, без машины. Суточные, зарплату, погрузку, стоянку и прочее можно записать на машину или в общие расходы. Если НДС не вписан вручную, к расходам кроме топлива добавляется 22%. Зарплата выделена отдельной статьёй, даже если за период её не было.',
   repairs: 'Заявки и сводки отобраны по дате постановки в ремзону.',
@@ -364,12 +364,17 @@ function tripSection(state: State, from: string, to: string): ReportSection {
     column('Ставка', 'right', 14, 'money'),
     column('Оплачено', 'right', 14, 'money'),
     column('Долг', 'right', 14, 'money'),
+    column('Зарплата', 'right', 14, 'money'),
+    column('Топливо', 'right', 14, 'money'),
+    column('Платные дороги', 'right', 16, 'money'),
+    column('Расходы', 'right', 14, 'money'),
   ]
   const rows = state.trips
     .filter((trip) => inRange(trip.date, from, to))
     .sort((a, b) => a.date.localeCompare(b.date) || a.number.localeCompare(b.number))
     .map((trip) => {
       const economics = tripEconomics(state, trip)
+      const costs = tripLinkedCosts(state, trip)
       return [
         dateRu(trip.date),
         trip.number,
@@ -383,9 +388,26 @@ function tripSection(state: State, from: string, to: string): ReportSection {
         trip.rate,
         economics.paid,
         economics.debt,
+        costs.salary,
+        costs.fuel,
+        costs.toll,
+        costs.spend,
       ]
     })
   return { title: 'Рейсы', columns, rows, totals: totalRow(rows, columns) }
+}
+
+function tripLinkedCosts(state: State, trip: Trip) {
+  const linked = state.expenses.filter((expense) => expense.tripId === trip.id)
+  const fuel = sumExpenses(linked.filter((expense) => expense.category === 'fuel'))
+  const toll = sumExpenses(linked.filter((expense) => expense.category === 'toll'))
+  const salary = sumExpenses(linked.filter((expense) => expense.category === 'salary'))
+  return {
+    salary,
+    fuel,
+    toll,
+    spend: sumExpenses(linked),
+  }
 }
 
 function expenseSection(state: State, from: string, to: string): ReportSection {

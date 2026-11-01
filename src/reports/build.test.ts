@@ -26,10 +26,17 @@ function rowNumber(rows: (string | number | null)[][], marker: string, index: nu
 
 const trips = section('trips')
 assert.equal(trips.section.rows.length, 6)
+assert.equal(trips.section.columns.slice(12).map((column) => column.title).join(', '), 'Зарплата, Топливо, Платные дороги, Расходы')
 assert.equal(rowNumber(trips.section.rows, 'Р-1034', 9), 86000)
 assert.equal(rowNumber(trips.section.rows, 'Р-1034', 10), 20000)
 assert.equal(rowNumber(trips.section.rows, 'Р-1034', 11), 66000)
-assert.deepEqual(trips.section.totals?.slice(9), [403000, 144000, 220000])
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 12), 0)
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 13), 18500)
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 14), 2928)
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 15), 28748)
+assert.equal(rowNumber(trips.section.rows, 'Р-1035', 13), 14200)
+assert.equal(rowNumber(trips.section.rows, 'Р-1035', 15), 24570)
+assert.deepEqual(trips.section.totals?.slice(9, 16), [403000, 144000, 220000, 0, 66600, 2928, 101736])
 
 const expenses = section('expenses')
 assert.equal(expenses.section.rows.length, 12)
@@ -69,8 +76,14 @@ const shared = new TextDecoder().decode(files['xl/sharedStrings.xml'])
 const worksheet = new TextDecoder().decode(files['xl/worksheets/sheet1.xml'])
 assert.match(shared, /Реестр рейсов/)
 assert.match(shared, /Р-1034/)
+assert.match(shared, /Зарплата/)
+assert.match(shared, /Топливо/)
+assert.match(shared, /Платные дороги/)
+assert.match(shared, /Расходы/)
 assert.match(worksheet, /86000/)
 assert.match(worksheet, /66000/)
+assert.match(worksheet, /18500/)
+assert.match(worksheet, /28748/)
 
 const fonts = {
   regular: readFileSync(new URL('../../public/fonts/Roboto-Regular.ttf', import.meta.url)),
