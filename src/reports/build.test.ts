@@ -27,19 +27,48 @@ function rowNumber(rows: (string | number | null)[][], marker: string, index: nu
 const trips = section('trips')
 assert.equal(trips.section.rows.length, 6)
 assert.equal(
-  trips.section.columns.slice(12).map((column) => column.title).join(', '),
+  trips.section.columns.slice(2, 9).map((column) => column.title).join(', '),
+  'Тип маршрута, Маршрут, Погр. 1, Выгр. 1, Погр. 2, Выгр. 2, Возврат',
+)
+assert.equal(
+  trips.section.columns.slice(18).map((column) => column.title).join(', '),
   'Зарплата, Топливо, Платные дороги, Расходы, Одометр погр., Одометр выгр., Пробег одом.',
 )
-assert.equal(rowNumber(trips.section.rows, 'Р-1034', 9), 86000)
-assert.equal(rowNumber(trips.section.rows, 'Р-1034', 10), 20000)
-assert.equal(rowNumber(trips.section.rows, 'Р-1034', 11), 66000)
-assert.equal(rowNumber(trips.section.rows, 'Р-1034', 12), 0)
-assert.equal(rowNumber(trips.section.rows, 'Р-1034', 13), 18500)
-assert.equal(rowNumber(trips.section.rows, 'Р-1034', 14), 2928)
-assert.equal(rowNumber(trips.section.rows, 'Р-1034', 15), 28748)
-assert.equal(rowNumber(trips.section.rows, 'Р-1035', 13), 14200)
-assert.equal(rowNumber(trips.section.rows, 'Р-1035', 15), 24570)
-assert.deepEqual(trips.section.totals?.slice(9, 16), [403000, 144000, 220000, 0, 66600, 2928, 101736])
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 2), 'Прямой рейс')
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 15), 86000)
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 16), 20000)
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 17), 66000)
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 18), 0)
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 19), 18500)
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 20), 2928)
+assert.equal(rowNumber(trips.section.rows, 'Р-1034', 21), 28748)
+assert.equal(rowNumber(trips.section.rows, 'Р-1035', 19), 14200)
+assert.equal(rowNumber(trips.section.rows, 'Р-1035', 21), 24570)
+assert.deepEqual(trips.section.totals?.slice(15, 22), [403000, 144000, 220000, 0, 66600, 2928, 101736])
+
+const roundTrip = {
+  ...state.trips[0],
+  id: 't_round',
+  number: 'Р-2001',
+  routeKind: 'round2' as const,
+  from: 'Казань',
+  to: 'Казань',
+  load1: 'Нижний Новгород',
+  unload1: 'Самара',
+  load2: 'Уфа',
+  unload2: 'Челябинск',
+  returnCity: 'Казань',
+}
+const roundReport = buildReport({ ...state, trips: [...state.trips, roundTrip] }, { kind: 'trips', ...october }, now)
+const roundRow = roundReport.sections[0].rows.find((row) => row.includes('Р-2001'))
+assert.ok(roundRow)
+assert.equal(roundRow[2], 'Кругорейс · 2 загрузки и 2 выгрузки')
+assert.match(String(roundRow[3]), /погр\. Нижний Новгород.*выгр\. Самара.*погр\. Уфа.*выгр\. Челябинск/)
+assert.equal(roundRow[4], 'Нижний Новгород')
+assert.equal(roundRow[5], 'Самара')
+assert.equal(roundRow[6], 'Уфа')
+assert.equal(roundRow[7], 'Челябинск')
+assert.equal(roundRow[8], 'Казань')
 
 const expenses = section('expenses')
 assert.equal(expenses.section.rows.length, 12)

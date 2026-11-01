@@ -38,7 +38,8 @@ function dataCell(value: string | number | null, kind: ColumnKind, align: 'left'
   if (typeof value === 'number') {
     return { value, type: Number, format: numberFormat(kind), align, ...extra }
   }
-  return { value, type: String, align, ...extra }
+  const wrap = typeof value === 'string' && value.length > 40
+  return { value, type: String, align, wrap, ...extra }
 }
 
 export function reportSheet(report: BuiltReport): ExcelCell[][] {
