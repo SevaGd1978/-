@@ -24,6 +24,15 @@ export function tripRouteLabel(trip: Pick<Trip, 'routeKind' | 'from' | 'to' | 'l
   return `${trip.from} – ${trip.to}`
 }
 
+/** Полный маршрут для Excel/PDF: тип + все погрузки и выгрузки. */
+export function tripRouteReportLabel(
+  trip: Pick<Trip, 'routeKind' | 'from' | 'to' | 'load1' | 'unload1' | 'load2' | 'unload2' | 'returnCity'>,
+) {
+  const kind = trip.routeKind ?? 'direct'
+  if (kind === 'direct') return tripRouteLabel(trip)
+  return `${tripRouteKindLabel(kind)}: ${tripRouteLabel(trip)}`
+}
+
 export function tripRoadPairs(trip: Trip): { from: string; to: string }[] {
   const kind = trip.routeKind ?? 'direct'
   if (kind === 'round1') {
@@ -82,12 +91,16 @@ export function finalizeTripRoute(trip: Trip): Trip {
       returnCity: '',
       odometerLoad2: null,
       odometerUnload2: null,
+      customer2: '',
+      cargo2: '',
+      rate2: 0,
+      payDue2: '',
       from: trip.from.trim(),
       to: trip.to.trim(),
     }
   }
   const back = (trip.returnCity || trip.from).trim()
-  const round2 = kind === 'round2'
+  const isRound2 = kind === 'round2'
   return {
     ...trip,
     routeKind: kind,
@@ -95,12 +108,22 @@ export function finalizeTripRoute(trip: Trip): Trip {
     to: back,
     load1: trip.load1.trim(),
     unload1: trip.unload1.trim(),
-    load2: round2 ? trip.load2.trim() : '',
-    unload2: round2 ? trip.unload2.trim() : '',
+    load2: isRound2 ? trip.load2.trim() : '',
+    unload2: isRound2 ? trip.unload2.trim() : '',
     returnCity: back,
-    odometerLoad2: round2 ? trip.odometerLoad2 : null,
-    odometerUnload2: round2 ? trip.odometerUnload2 : null,
+    odometerLoad2: isRound2 ? trip.odometerLoad2 : null,
+    odometerUnload2: isRound2 ? trip.odometerUnload2 : null,
+    customer2: isRound2 ? (trip.customer2 ?? '').trim() : '',
+    cargo2: isRound2 ? (trip.cargo2 ?? '').trim() : '',
+    rate2: isRound2 ? trip.rate2 || 0 : 0,
+    payDue2: isRound2 ? trip.payDue2 || '' : '',
   }
+}
+
+export function paymentLegLabel(leg: number) {
+  if (leg === 1) return 'Плечо 1'
+  if (leg === 2) return 'Плечо 2'
+  return 'Без плеча'
 }
 
 /** Пробег по одометру: от первой погрузки до последней выгрузки. */

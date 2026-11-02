@@ -172,8 +172,9 @@ export function saveTrip(db: Sql, trip: Trip): DbResult {
       `INSERT INTO trips (
          id, number, date, from_city, to_city, route_kind, load1_city, unload1_city, load2_city, unload2_city,
          return_city, odometer_load1, odometer_unload1, odometer_load2, odometer_unload2,
-         vehicle_id, driver_id, customer, cargo, weight_tons, rate, pay_due, status, note, position
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         vehicle_id, driver_id, customer, cargo, weight_tons, rate, pay_due,
+         customer2, cargo2, rate2, pay_due2, status, note, position
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          number = excluded.number, date = excluded.date, from_city = excluded.from_city,
          to_city = excluded.to_city, route_kind = excluded.route_kind, load1_city = excluded.load1_city,
@@ -183,6 +184,7 @@ export function saveTrip(db: Sql, trip: Trip): DbResult {
          odometer_unload2 = excluded.odometer_unload2, vehicle_id = excluded.vehicle_id,
          driver_id = excluded.driver_id, customer = excluded.customer, cargo = excluded.cargo,
          weight_tons = excluded.weight_tons, rate = excluded.rate, pay_due = excluded.pay_due,
+         customer2 = excluded.customer2, cargo2 = excluded.cargo2, rate2 = excluded.rate2, pay_due2 = excluded.pay_due2,
          status = excluded.status, note = excluded.note`,
     ).run(
       trip.id,
@@ -207,11 +209,16 @@ export function saveTrip(db: Sql, trip: Trip): DbResult {
       trip.weightTons,
       trip.rate,
       trip.payDue,
+      trip.customer2 ?? '',
+      trip.cargo2 ?? '',
+      trip.rate2 ?? 0,
+      trip.payDue2 ?? '',
       trip.status,
       trip.note,
       position,
     )
     rememberCustomer(db, trip.customer)
+    rememberCustomer(db, trip.customer2 ?? '')
     return done(db)
   })
 }
@@ -308,11 +315,11 @@ export function savePayment(db: Sql, payment: Payment): DbResult {
     }
     const position = nextPosition(db, 'payments', payment.id)
     db.prepare(
-      `INSERT INTO payments (id, trip_id, date, amount, method, counterparty, comment, position)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO payments (id, trip_id, date, amount, method, counterparty, comment, leg, position)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          trip_id = excluded.trip_id, date = excluded.date, amount = excluded.amount, method = excluded.method,
-         counterparty = excluded.counterparty, comment = excluded.comment`,
+         counterparty = excluded.counterparty, comment = excluded.comment, leg = excluded.leg`,
     ).run(
       payment.id,
       payment.tripId,
@@ -321,6 +328,7 @@ export function savePayment(db: Sql, payment: Payment): DbResult {
       payment.method,
       payment.counterparty,
       payment.comment,
+      payment.leg ?? 0,
       position,
     )
     return done(db)
@@ -413,8 +421,9 @@ function insertTrips(db: Sql, rows: Trip[]) {
     `INSERT INTO trips (
        id, number, date, from_city, to_city, route_kind, load1_city, unload1_city, load2_city, unload2_city,
        return_city, odometer_load1, odometer_unload1, odometer_load2, odometer_unload2,
-       vehicle_id, driver_id, customer, cargo, weight_tons, rate, pay_due, status, note, position
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       vehicle_id, driver_id, customer, cargo, weight_tons, rate, pay_due,
+       customer2, cargo2, rate2, pay_due2, status, note, position
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   rows.forEach((row, index) =>
     stmt.run(
@@ -440,6 +449,10 @@ function insertTrips(db: Sql, rows: Trip[]) {
       row.weightTons,
       row.rate,
       row.payDue,
+      row.customer2 ?? '',
+      row.cargo2 ?? '',
+      row.rate2 ?? 0,
+      row.payDue2 ?? '',
       row.status,
       row.note,
       rank(index, rows.length),
@@ -491,8 +504,8 @@ function insertRepairs(db: Sql, rows: RepairJob[]) {
 
 function insertPayments(db: Sql, rows: Payment[]) {
   const stmt = db.prepare(
-    `INSERT INTO payments (id, trip_id, date, amount, method, counterparty, comment, position)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO payments (id, trip_id, date, amount, method, counterparty, comment, leg, position)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   rows.forEach((row, index) =>
     stmt.run(
@@ -503,6 +516,7 @@ function insertPayments(db: Sql, rows: Payment[]) {
       row.method,
       row.counterparty,
       row.comment,
+      row.leg ?? 0,
       rank(index, rows.length),
     ),
   )
@@ -598,6 +612,14 @@ function ensureTripRoute(db: Sql) {
   if (!names.has('odometer_unload1')) db.exec(`ALTER TABLE trips ADD COLUMN odometer_unload1 REAL`)
   if (!names.has('odometer_load2')) db.exec(`ALTER TABLE trips ADD COLUMN odometer_load2 REAL`)
   if (!names.has('odometer_unload2')) db.exec(`ALTER TABLE trips ADD COLUMN odometer_unload2 REAL`)
+  if (!names.has('customer2')) db.exec(`ALTER TABLE trips ADD COLUMN customer2 TEXT NOT NULL DEFAULT ''`)
+  if (!names.has('cargo2')) db.exec(`ALTER TABLE trips ADD COLUMN cargo2 TEXT NOT NULL DEFAULT ''`)
+  if (!names.has('rate2')) db.exec(`ALTER TABLE trips ADD COLUMN rate2 REAL NOT NULL DEFAULT 0`)
+  if (!names.has('pay_due2')) db.exec(`ALTER TABLE trips ADD COLUMN pay_due2 TEXT NOT NULL DEFAULT ''`)
+  const paymentColumns = db.prepare(`PRAGMA table_info(payments)`).all() as { name: string }[]
+  if (!paymentColumns.some((column) => column.name === 'leg')) {
+    db.exec(`ALTER TABLE payments ADD COLUMN leg INTEGER NOT NULL DEFAULT 0`)
+  }
 }
 
 function unbindSharedCosts(db: Sql) {
@@ -642,7 +664,10 @@ function readState(db: Sql): State {
                 odometer_load1 AS odometerLoad1, odometer_unload1 AS odometerUnload1,
                 odometer_load2 AS odometerLoad2, odometer_unload2 AS odometerUnload2,
                 vehicle_id AS vehicleId, driver_id AS driverId,
-                customer, cargo, weight_tons AS weightTons, rate, pay_due AS payDue, status, note
+                customer, cargo, weight_tons AS weightTons, rate, pay_due AS payDue,
+                COALESCE(customer2, '') AS customer2, COALESCE(cargo2, '') AS cargo2,
+                COALESCE(rate2, 0) AS rate2, COALESCE(pay_due2, '') AS payDue2,
+                status, note
          FROM trips ORDER BY position DESC`,
       )
       .all() as unknown as Trip[],
@@ -661,7 +686,9 @@ function readState(db: Sql): State {
       .all() as unknown as RepairJob[],
     payments: db
       .prepare(
-        `SELECT id, trip_id AS tripId, date, amount, method, counterparty, comment FROM payments ORDER BY position DESC`,
+        `SELECT id, trip_id AS tripId, date, amount, method, counterparty, comment,
+                COALESCE(leg, 0) AS leg
+         FROM payments ORDER BY position DESC`,
       )
       .all() as unknown as Payment[],
     customers: (
@@ -680,9 +707,15 @@ function rememberCustomer(db: Sql, name: string) {
 }
 
 function rememberTripCustomers(db: Sql) {
-  const rows = db.prepare(`SELECT DISTINCT customer FROM trips`).all() as { customer: string }[]
+  const rows = db
+    .prepare(
+      `SELECT DISTINCT customer AS name FROM trips
+       UNION
+       SELECT DISTINCT customer2 AS name FROM trips WHERE COALESCE(customer2, '') != ''`,
+    )
+    .all() as { name: string }[]
   for (const row of rows) {
-    const name = row.customer.trim().replace(/\s+/g, ' ')
+    const name = row.name.trim().replace(/\s+/g, ' ')
     if (!name) continue
     db.prepare(`INSERT INTO customers (name, seen_at) VALUES (?, 0) ON CONFLICT(name) DO NOTHING`).run(name)
   }

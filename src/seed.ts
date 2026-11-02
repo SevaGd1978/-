@@ -13,6 +13,10 @@ function directTrip(
     | 'odometerUnload1'
     | 'odometerLoad2'
     | 'odometerUnload2'
+    | 'customer2'
+    | 'cargo2'
+    | 'rate2'
+    | 'payDue2'
   >,
 ): Trip {
   return {
@@ -27,6 +31,10 @@ function directTrip(
     odometerUnload1: null,
     odometerLoad2: null,
     odometerUnload2: null,
+    customer2: '',
+    cargo2: '',
+    rate2: 0,
+    payDue2: '',
   }
 }
 
@@ -249,6 +257,7 @@ export function createSeed(): State {
         amount: 20000,
         method: 'cash',
         counterparty: 'ООО «Теплосеть»',
+        leg: 0,
         comment: 'Аванс на топливо',
       },
       {
@@ -258,6 +267,7 @@ export function createSeed(): State {
         amount: 64000,
         method: 'bank',
         counterparty: 'АО «СтройТрубМонтаж»',
+        leg: 0,
         comment: 'Оплата по счёту',
       },
       {
@@ -267,6 +277,7 @@ export function createSeed(): State {
         amount: 60000,
         method: 'bank',
         counterparty: 'МУП «Горводоканал»',
+        leg: 0,
         comment: 'Частичная оплата',
       },
       {
@@ -276,6 +287,7 @@ export function createSeed(): State {
         amount: 71000,
         method: 'bank',
         counterparty: 'ООО «Теплосеть»',
+        leg: 0,
         comment: 'Закрыто полностью',
       },
       {
@@ -285,6 +297,7 @@ export function createSeed(): State {
         amount: 98000,
         method: 'bank',
         counterparty: 'МУП «Горводоканал»',
+        leg: 0,
         comment: 'Оплата после сдачи документов',
       },
     ],

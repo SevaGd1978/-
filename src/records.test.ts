@@ -23,6 +23,10 @@ const base = {
   cargo: 'Труба',
   weightTons: 18,
   rate: 86000,
+  customer2: '',
+  cargo2: '',
+  rate2: 0,
+  payDue2: '',
   status: 'planned',
   note: '',
 }

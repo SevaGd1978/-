@@ -7,3 +7,4 @@ dist
 *.sqlite-shm
 *.local
 .DS_Store
+.vite

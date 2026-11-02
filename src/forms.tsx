@@ -1,5 +1,16 @@
 import { useState, type FormEvent } from 'react'
-import { copiedTrip, debtOf, nextTripNumber, parseMoney, parseOdometer, parseWeight, round2, sumAmounts } from './calc'
+import {
+  copiedTrip,
+  debtOf,
+  legDebt,
+  nextTripNumber,
+  parseMoney,
+  parseOdometer,
+  parseWeight,
+  round2,
+  sumAmounts,
+  tripTotalRate,
+} from './calc'
 import {
   dateRu,
   expenseCategoryLabel,
@@ -22,7 +33,7 @@ import {
 } from './format'
 import { vehicleDuty } from './fleetStatus'
 import { uid, useData } from './store'
-import type { Driver, Payment, RepairJob, Trip, TripExpense, TripRouteKind, Vehicle } from './types'
+import type { Driver, Payment, PaymentLeg, RepairJob, Trip, TripExpense, TripRouteKind, Vehicle } from './types'
 import { finalizeTripRoute, tripRouteKindLabel, tripRouteLabel, validateTripRoute } from './tripRoute.ts'
 import { CityField } from './CityField'
 import { CustomerField } from './CustomerField'
@@ -85,6 +96,10 @@ export function TripForm({
   const [weight, setWeight] = useState(initial ? String(initial.weightTons || '') : '')
   const [rate, setRate] = useState(initial ? String(initial.rate) : '')
   const [payDue, setPayDue] = useState(initial?.payDue ?? '')
+  const [customer2, setCustomer2] = useState(initial?.customer2 ?? '')
+  const [cargo2, setCargo2] = useState(initial?.cargo2 ?? '')
+  const [rate2, setRate2] = useState(initial?.rate2 ? String(initial.rate2) : '')
+  const [payDue2, setPayDue2] = useState(initial?.payDue2 ?? '')
   const [status, setStatus] = useState(initial?.status ?? 'planned')
   const [note, setNote] = useState(initial?.note ?? '')
   const [error, setError] = useState('')
@@ -92,9 +107,18 @@ export function TripForm({
   function submit(event: FormEvent) {
     event.preventDefault()
     const parsedRate = parseMoney(rate)
+    const parsedRate2 = parseMoney(rate2)
     const parsedWeight = parseWeight(weight)
     if (!number.trim() || !date || !customer.trim() || !cargo.trim()) {
       setError('Заполните номер, дату, заказчика и груз.')
+      return
+    }
+    if (routeKind === 'round2' && !customer2.trim()) {
+      setError('Укажите заказчика второго плеча.')
+      return
+    }
+    if (routeKind === 'round2' && !cargo2.trim()) {
+      setError('Укажите груз второго плеча.')
       return
     }
     const routeError = validateTripRoute({
@@ -145,7 +169,11 @@ export function TripForm({
       return
     }
     if (parsedRate === null || parsedRate <= 0) {
-      setError('Укажите ставку больше нуля.')
+      setError(routeKind === 'round2' ? 'Укажите ставку первого плеча больше нуля.' : 'Укажите ставку больше нуля.')
+      return
+    }
+    if (routeKind === 'round2' && (parsedRate2 === null || parsedRate2 <= 0)) {
+      setError('Укажите ставку второго плеча больше нуля.')
       return
     }
     if (parsedWeight === null) {
@@ -180,6 +208,10 @@ export function TripForm({
         weightTons: parsedWeight,
         rate: parsedRate,
         payDue,
+        customer2: customer2.trim(),
+        cargo2: cargo2.trim(),
+        rate2: routeKind === 'round2' ? parsedRate2! : 0,
+        payDue2: routeKind === 'round2' ? payDue2 : '',
         status,
         note: note.trim(),
       }),
@@ -295,24 +327,51 @@ export function TripForm({
           ))}
         </select>
       </Field>
+      {routeKind === 'round2' ? (
+        <p className="hint wide">Плечо 1 — первая погрузка и выгрузка. Плечо 2 — вторая пара точек и отдельная оплата.</p>
+      ) : null}
       <CustomerField
-        label="Заказчик"
+        label={routeKind === 'round2' ? 'Заказчик · плечо 1' : 'Заказчик'}
         value={customer}
         onChange={setCustomer}
         catalog={customerCatalog(state.customers, state.trips)}
       />
-      <Field label="Груз">
+      <Field label={routeKind === 'round2' ? 'Груз · плечо 1' : 'Груз'}>
         <input value={cargo} onChange={(event) => setCargo(event.target.value)} />
       </Field>
       <Field label="Вес, т">
         <input inputMode="decimal" value={weight} onChange={(event) => setWeight(event.target.value)} placeholder="18" />
       </Field>
-      <Field label="Ставка, ₽">
+      <Field label={routeKind === 'round2' ? 'Ставка · плечо 1, ₽' : 'Ставка, ₽'}>
         <input inputMode="decimal" value={rate} onChange={(event) => setRate(event.target.value)} placeholder="86000" />
       </Field>
-      <Field label="Срок оплаты">
+      <Field label={routeKind === 'round2' ? 'Срок оплаты · плечо 1' : 'Срок оплаты'}>
         <input type="date" value={payDue} onChange={(event) => setPayDue(event.target.value)} />
       </Field>
+      {routeKind === 'round2' ? (
+        <>
+          <CustomerField
+            label="Заказчик · плечо 2"
+            value={customer2}
+            onChange={setCustomer2}
+            catalog={customerCatalog(state.customers, state.trips)}
+          />
+          <Field label="Груз · плечо 2">
+            <input value={cargo2} onChange={(event) => setCargo2(event.target.value)} />
+          </Field>
+          <Field label="Ставка · плечо 2, ₽">
+            <input
+              inputMode="decimal"
+              value={rate2}
+              onChange={(event) => setRate2(event.target.value)}
+              placeholder="72000"
+            />
+          </Field>
+          <Field label="Срок оплаты · плечо 2">
+            <input type="date" value={payDue2} onChange={(event) => setPayDue2(event.target.value)} />
+          </Field>
+        </>
+      ) : null}
       <Field label="Статус">
         <select value={status} onChange={(event) => setStatus(event.target.value as Trip['status'])}>
           {tripStatuses.map((item) => (
@@ -699,30 +758,102 @@ export function PaymentForm({
   const { state } = useData()
   const presetId = initial?.tripId ?? fixedTripId ?? ''
   const presetTrip = state.trips.find((item) => item.id === presetId)
+  const isRound2 = (presetTrip?.routeKind ?? 'direct') === 'round2'
+  const presetStartLeg: PaymentLeg = initial?.leg ?? (isRound2 ? 1 : 0)
   const presetDebt = presetTrip
-    ? debtOf(
-        presetTrip,
-        sumAmounts(state.payments.filter((payment) => payment.tripId === presetTrip.id)),
-      )
+    ? isRound2 && (presetStartLeg === 1 || presetStartLeg === 2)
+      ? legDebt(
+          { ...presetTrip, status: presetTrip.status === 'cancelled' ? 'delivered' : presetTrip.status },
+          presetStartLeg,
+          sumAmounts(
+            state.payments.filter(
+              (payment) =>
+                payment.tripId === presetTrip.id &&
+                payment.id !== initial?.id &&
+                (payment.leg ?? 0) === presetStartLeg,
+            ),
+          ),
+        )
+      : debtOf(
+          presetTrip,
+          sumAmounts(state.payments.filter((payment) => payment.tripId === presetTrip.id && payment.id !== initial?.id)),
+        )
     : 0
   const [tripId, setTripId] = useState(presetId)
+  const [leg, setLeg] = useState<PaymentLeg>(presetStartLeg)
   const [date, setDate] = useState(initial?.date ?? todayIso())
-  const [amount, setAmount] = useState(initial ? String(initial.amount) : presetDebt > 0 ? String(presetDebt) : '')
   const [method, setMethod] = useState(initial?.method ?? 'bank')
   const [counterparty, setCounterparty] = useState(initial?.counterparty ?? presetTrip?.customer ?? '')
   const [comment, setComment] = useState(initial?.comment ?? '')
   const [error, setError] = useState('')
   const trip = state.trips.find((item) => item.id === tripId)
+  const tripIsRound2 = (trip?.routeKind ?? 'direct') === 'round2'
   const paidOther = sumAmounts(
     state.payments.filter((payment) => payment.tripId === tripId && payment.id !== initial?.id),
   )
-  const balance = trip ? debtOf({ ...trip, status: trip.status === 'cancelled' ? 'delivered' : trip.status }, paidOther) : 0
+  const paidOtherLeg = sumAmounts(
+    state.payments.filter(
+      (payment) => payment.tripId === tripId && payment.id !== initial?.id && (payment.leg ?? 0) === leg,
+    ),
+  )
+  const balance = trip
+    ? tripIsRound2 && (leg === 1 || leg === 2)
+      ? legDebt({ ...trip, status: trip.status === 'cancelled' ? 'delivered' : trip.status }, leg, paidOtherLeg)
+      : debtOf({ ...trip, status: trip.status === 'cancelled' ? 'delivered' : trip.status }, paidOther)
+    : 0
+  const [amount, setAmount] = useState(
+    initial ? String(initial.amount) : presetDebt > 0 ? String(presetDebt) : '',
+  )
   const parsedAmount = parseMoney(amount)
 
   function chooseTrip(id: string) {
     setTripId(id)
     const next = state.trips.find((item) => item.id === id)
-    if (next) setCounterparty(next.customer)
+    if (!next) return
+    if ((next.routeKind ?? 'direct') === 'round2') {
+      setLeg(1)
+      setCounterparty(next.customer)
+      const paidLeg1 = sumAmounts(
+        state.payments.filter(
+          (payment) => payment.tripId === id && payment.id !== initial?.id && (payment.leg ?? 0) === 1,
+        ),
+      )
+      const nextBalance = legDebt(
+        { ...next, status: next.status === 'cancelled' ? 'delivered' : next.status },
+        1,
+        paidLeg1,
+      )
+      setAmount(nextBalance > 0 ? String(nextBalance) : '')
+    } else {
+      setLeg(0)
+      setCounterparty(next.customer)
+      const paid = sumAmounts(state.payments.filter((payment) => payment.tripId === id && payment.id !== initial?.id))
+      const nextBalance = debtOf(
+        { ...next, status: next.status === 'cancelled' ? 'delivered' : next.status },
+        paid,
+      )
+      setAmount(nextBalance > 0 ? String(nextBalance) : '')
+    }
+  }
+
+  function chooseLeg(nextLeg: PaymentLeg) {
+    setLeg(nextLeg)
+    if (!trip) return
+    if (nextLeg === 2) setCounterparty(trip.customer2 || trip.customer)
+    else if (nextLeg === 1) setCounterparty(trip.customer)
+    if (nextLeg === 1 || nextLeg === 2) {
+      const paidLeg = sumAmounts(
+        state.payments.filter(
+          (payment) => payment.tripId === tripId && payment.id !== initial?.id && (payment.leg ?? 0) === nextLeg,
+        ),
+      )
+      const nextBalance = legDebt(
+        { ...trip, status: trip.status === 'cancelled' ? 'delivered' : trip.status },
+        nextLeg,
+        paidLeg,
+      )
+      setAmount(nextBalance > 0 ? String(nextBalance) : '')
+    }
   }
 
   function submit(event: FormEvent) {
@@ -740,6 +871,10 @@ export function PaymentForm({
       setError('Сумма оплаты должна быть больше нуля.')
       return
     }
+    if (tripIsRound2 && leg !== 1 && leg !== 2) {
+      setError('Для кругорейса ×2 выберите плечо оплаты.')
+      return
+    }
     onSubmit({
       id: initial?.id ?? uid('p'),
       tripId,
@@ -748,6 +883,7 @@ export function PaymentForm({
       method,
       counterparty: counterparty.trim(),
       comment: comment.trim(),
+      leg: tripIsRound2 ? leg : 0,
     })
   }
 
@@ -765,12 +901,22 @@ export function PaymentForm({
               .sort((a, b) => b.date.localeCompare(a.date))
               .map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.number} · {item.customer} · долг {money(debtOf(item, sumAmounts(state.payments.filter((payment) => payment.tripId === item.id))))}
+                  {item.number} · {item.customer}
+                  {(item.routeKind ?? 'direct') === 'round2' && item.customer2 ? ` / ${item.customer2}` : ''} · долг{' '}
+                  {money(debtOf(item, sumAmounts(state.payments.filter((payment) => payment.tripId === item.id))))}
                 </option>
               ))}
           </select>
         </Field>
       )}
+      {tripIsRound2 ? (
+        <Field label="Плечо оплаты" wide>
+          <select value={String(leg)} onChange={(event) => chooseLeg(Number(event.target.value) as PaymentLeg)}>
+            <option value="1">Плечо 1 · {trip?.customer || 'заказчик 1'} · ставка {money(trip?.rate ?? 0)}</option>
+            <option value="2">Плечо 2 · {trip?.customer2 || 'заказчик 2'} · ставка {money(trip?.rate2 ?? 0)}</option>
+          </select>
+        </Field>
+      ) : null}
       <Field label="Дата">
         <input type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
       </Field>
@@ -794,8 +940,12 @@ export function PaymentForm({
       </Field>
       {trip ? (
         <p className={`hint wide ${parsedAmount !== null && parsedAmount > balance ? 'hint-warn' : ''}`}>
-          Ставка {money(trip.rate)}. Уже внесено без этой записи {money(paidOther)}. Остаток {money(balance)}.
-          {trip.payDue ? ` Срок ${dateRu(trip.payDue)}.` : ''}
+          {tripIsRound2 && (leg === 1 || leg === 2)
+            ? `Плечо ${leg}: ставка ${money(leg === 1 ? trip.rate : trip.rate2)}. По плечу без этой записи ${money(paidOtherLeg)}. Остаток по плечу ${money(balance)}. Всего по рейсу ${money(tripTotalRate(trip))}, внесено ${money(paidOther)}.`
+            : `Ставка ${money(tripTotalRate(trip))}. Уже внесено без этой записи ${money(paidOther)}. Остаток ${money(balance)}.`}
+          {tripIsRound2 && leg === 1 && trip.payDue ? ` Срок плеча 1 ${dateRu(trip.payDue)}.` : ''}
+          {tripIsRound2 && leg === 2 && trip.payDue2 ? ` Срок плеча 2 ${dateRu(trip.payDue2)}.` : ''}
+          {!tripIsRound2 && trip.payDue ? ` Срок ${dateRu(trip.payDue)}.` : ''}
           {parsedAmount !== null && parsedAmount > balance ? ' Сумма больше остатка, получится переплата.' : ''}
           {trip.status === 'cancelled' ? ' Рейс отменён, долг по нему не копится.' : ''}
         </p>
