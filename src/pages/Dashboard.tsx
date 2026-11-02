@@ -1,5 +1,14 @@
 import { useMemo, useState } from 'react'
-import { debtOf, inPeriod, isOverdue, repairCost, sumAmounts, sumExpenses, VAT_PERCENT } from '../calc'
+import {
+  addTripDebtByCustomer,
+  debtOf,
+  inPeriod,
+  isOverdue,
+  repairCost,
+  sumAmounts,
+  sumExpenses,
+  VAT_PERCENT,
+} from '../calc'
 import {
   currentPeriod,
   dateRu,
@@ -53,9 +62,12 @@ export function Dashboard({ onOpenTrip }: { onOpenTrip: (id: string) => void }) 
     .sort((a, b) => a.trip.date.localeCompare(b.trip.date))
 
   const byCustomer = new Map<string, number>()
-  for (const row of rows) {
-    if (row.debt <= 0) continue
-    byCustomer.set(row.trip.customer, (byCustomer.get(row.trip.customer) ?? 0) + row.debt)
+  for (const trip of state.trips) {
+    addTripDebtByCustomer(
+      byCustomer,
+      trip,
+      state.payments.filter((payment) => payment.tripId === trip.id),
+    )
   }
   const customers = [...byCustomer.entries()].sort((a, b) => b[1] - a[1])
 

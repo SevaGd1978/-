@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict'
 import {
+  addTripDebtByCustomer,
   debtOf,
   expenseVat,
   expenseWithVat,
   inPeriod,
   isOverdue,
+  legDebt,
   marginOf,
   copiedTrip,
   nextTripNumber,
@@ -13,6 +15,7 @@ import {
   repairCost,
   round2,
   sumExpenses,
+  tripTotalRate,
 } from './calc.ts'
 import type { Trip } from './types.ts'
 
@@ -40,6 +43,29 @@ assert.equal(round2(10.126), 10.13)
 assert.equal(debtOf(trip({ rate: 86000 }), 20000), 66000)
 assert.equal(debtOf(trip({ status: 'cancelled', rate: 39000 }), 0), 0)
 assert.equal(debtOf(trip({ rate: 1000 }), 1500), 0)
+assert.equal(tripTotalRate(trip({ routeKind: 'round2', rate: 86000, rate2: 72000 })), 158000)
+assert.equal(legDebt(trip({ routeKind: 'round2', rate: 86000, rate2: 72000 }), 1, 40000), 46000)
+assert.equal(legDebt(trip({ routeKind: 'round2', rate: 86000, rate2: 72000 }), 2, 30000), 42000)
+{
+  const byCustomer = new Map<string, number>()
+  addTripDebtByCustomer(
+    byCustomer,
+    trip({
+      routeKind: 'round2',
+      customer: 'ООО Альфа',
+      customer2: 'ООО Бета',
+      rate: 86000,
+      rate2: 72000,
+      status: 'delivered',
+    }),
+    [
+      { amount: 40000, leg: 1 },
+      { amount: 30000, leg: 2 },
+    ],
+  )
+  assert.equal(byCustomer.get('ООО Альфа'), 46000)
+  assert.equal(byCustomer.get('ООО Бета'), 42000)
+}
 assert.equal(payMark('delivered', 64000, 64000), 'paid')
 assert.equal(payMark('delivered', 86000, 20000), 'partial')
 assert.equal(payMark('planned', 54000, 0), 'unpaid')

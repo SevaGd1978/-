@@ -758,17 +758,30 @@ export function PaymentForm({
   const { state } = useData()
   const presetId = initial?.tripId ?? fixedTripId ?? ''
   const presetTrip = state.trips.find((item) => item.id === presetId)
-  const presetDebt = presetTrip
-    ? debtOf(
-        presetTrip,
-        sumAmounts(state.payments.filter((payment) => payment.tripId === presetTrip.id)),
-      )
-    : 0
   const isRound2 = (presetTrip?.routeKind ?? 'direct') === 'round2'
+  const presetStartLeg: PaymentLeg = initial?.leg ?? (isRound2 ? 1 : 0)
+  const presetDebt = presetTrip
+    ? isRound2 && (presetStartLeg === 1 || presetStartLeg === 2)
+      ? legDebt(
+          { ...presetTrip, status: presetTrip.status === 'cancelled' ? 'delivered' : presetTrip.status },
+          presetStartLeg,
+          sumAmounts(
+            state.payments.filter(
+              (payment) =>
+                payment.tripId === presetTrip.id &&
+                payment.id !== initial?.id &&
+                (payment.leg ?? 0) === presetStartLeg,
+            ),
+          ),
+        )
+      : debtOf(
+          presetTrip,
+          sumAmounts(state.payments.filter((payment) => payment.tripId === presetTrip.id && payment.id !== initial?.id)),
+        )
+    : 0
   const [tripId, setTripId] = useState(presetId)
-  const [leg, setLeg] = useState<PaymentLeg>(initial?.leg ?? (isRound2 ? 1 : 0))
+  const [leg, setLeg] = useState<PaymentLeg>(presetStartLeg)
   const [date, setDate] = useState(initial?.date ?? todayIso())
-  const [amount, setAmount] = useState(initial ? String(initial.amount) : presetDebt > 0 ? String(presetDebt) : '')
   const [method, setMethod] = useState(initial?.method ?? 'bank')
   const [counterparty, setCounterparty] = useState(initial?.counterparty ?? presetTrip?.customer ?? '')
   const [comment, setComment] = useState(initial?.comment ?? '')
@@ -788,6 +801,9 @@ export function PaymentForm({
       ? legDebt({ ...trip, status: trip.status === 'cancelled' ? 'delivered' : trip.status }, leg, paidOtherLeg)
       : debtOf({ ...trip, status: trip.status === 'cancelled' ? 'delivered' : trip.status }, paidOther)
     : 0
+  const [amount, setAmount] = useState(
+    initial ? String(initial.amount) : presetDebt > 0 ? String(presetDebt) : '',
+  )
   const parsedAmount = parseMoney(amount)
 
   function chooseTrip(id: string) {
@@ -797,9 +813,26 @@ export function PaymentForm({
     if ((next.routeKind ?? 'direct') === 'round2') {
       setLeg(1)
       setCounterparty(next.customer)
+      const paidLeg1 = sumAmounts(
+        state.payments.filter(
+          (payment) => payment.tripId === id && payment.id !== initial?.id && (payment.leg ?? 0) === 1,
+        ),
+      )
+      const nextBalance = legDebt(
+        { ...next, status: next.status === 'cancelled' ? 'delivered' : next.status },
+        1,
+        paidLeg1,
+      )
+      setAmount(nextBalance > 0 ? String(nextBalance) : '')
     } else {
       setLeg(0)
       setCounterparty(next.customer)
+      const paid = sumAmounts(state.payments.filter((payment) => payment.tripId === id && payment.id !== initial?.id))
+      const nextBalance = debtOf(
+        { ...next, status: next.status === 'cancelled' ? 'delivered' : next.status },
+        paid,
+      )
+      setAmount(nextBalance > 0 ? String(nextBalance) : '')
     }
   }
 
@@ -808,6 +841,19 @@ export function PaymentForm({
     if (!trip) return
     if (nextLeg === 2) setCounterparty(trip.customer2 || trip.customer)
     else if (nextLeg === 1) setCounterparty(trip.customer)
+    if (nextLeg === 1 || nextLeg === 2) {
+      const paidLeg = sumAmounts(
+        state.payments.filter(
+          (payment) => payment.tripId === tripId && payment.id !== initial?.id && (payment.leg ?? 0) === nextLeg,
+        ),
+      )
+      const nextBalance = legDebt(
+        { ...trip, status: trip.status === 'cancelled' ? 'delivered' : trip.status },
+        nextLeg,
+        paidLeg,
+      )
+      setAmount(nextBalance > 0 ? String(nextBalance) : '')
+    }
   }
 
   function submit(event: FormEvent) {

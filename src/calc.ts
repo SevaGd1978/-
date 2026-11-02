@@ -46,6 +46,32 @@ export function legDebt(trip: Trip, leg: 1 | 2, paidOnLeg: number) {
   return Math.max(0, round2(legRate(trip, leg) - paidOnLeg))
 }
 
+/** Долги по заказчикам: для круга ×2 — отдельно по плечам 1 и 2. */
+export function addTripDebtByCustomer(
+  byCustomer: Map<string, number>,
+  trip: Trip,
+  payments: { amount: number; leg?: number }[],
+) {
+  if (trip.status === 'cancelled') return
+  if ((trip.routeKind ?? 'direct') === 'round2') {
+    const paid1 = sumAmounts(payments.filter((payment) => (payment.leg ?? 0) === 1))
+    const paid2 = sumAmounts(payments.filter((payment) => (payment.leg ?? 0) === 2))
+    const debt1 = legDebt(trip, 1, paid1)
+    const debt2 = legDebt(trip, 2, paid2)
+    if (debt1 > 0 && trip.customer) {
+      byCustomer.set(trip.customer, round2((byCustomer.get(trip.customer) ?? 0) + debt1))
+    }
+    if (debt2 > 0 && trip.customer2) {
+      byCustomer.set(trip.customer2, round2((byCustomer.get(trip.customer2) ?? 0) + debt2))
+    }
+    return
+  }
+  const debt = debtOf(trip, sumAmounts(payments))
+  if (debt > 0 && trip.customer) {
+    byCustomer.set(trip.customer, round2((byCustomer.get(trip.customer) ?? 0) + debt))
+  }
+}
+
 export type PayMark = 'paid' | 'partial' | 'unpaid' | 'cancelled'
 
 export function payMark(status: Trip['status'], rate: number, paid: number): PayMark {
