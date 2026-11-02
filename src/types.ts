@@ -56,11 +56,21 @@ export interface Trip {
   odometerUnload2: number | null
   vehicleId: string
   driverId: string
+  /** Заказчик первого плеча (и единственный для прямого / круга ×1). */
   customer: string
   cargo: string
   weightTons: number
+  /** Ставка первого плеча. */
   rate: number
   payDue: string
+  /** Заказчик второго плеча (кругорейс ×2). */
+  customer2: string
+  /** Груз второго плеча (кругорейс ×2). */
+  cargo2: string
+  /** Ставка второго плеча (кругорейс ×2). */
+  rate2: number
+  /** Срок оплаты второго плеча. */
+  payDue2: string
   status: TripStatus
   note: string
 }
@@ -89,6 +99,9 @@ export interface RepairJob {
   odometer: number | null
 }
 
+/** 0 — без привязки к плечу; 1 / 2 — оплата за плечо кругорейса. */
+export type PaymentLeg = 0 | 1 | 2
+
 export interface Payment {
   id: string
   tripId: string
@@ -97,6 +110,8 @@ export interface Payment {
   method: PayMethod
   counterparty: string
   comment: string
+  /** Плечо рейса: 1 или 2 для кругорейса ×2, иначе 0. */
+  leg: PaymentLeg
 }
 
 export interface State {

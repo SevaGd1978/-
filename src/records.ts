@@ -4,6 +4,7 @@ import type {
   ExpenseCategory,
   PayMethod,
   Payment,
+  PaymentLeg,
   RepairJob,
   RepairKind,
   RepairStatus,
@@ -165,6 +166,10 @@ export function parseTrip(value: unknown): Trip | null {
     weightTons: tons(row.weightTons),
     rate: money(row.rate),
     payDue: optionalDay(row.payDue),
+    customer2: optionalText(row.customer2, 160),
+    cargo2: optionalText(row.cargo2, 160),
+    rate2: row.rate2 == null || row.rate2 === '' ? 0 : money(row.rate2),
+    payDue2: optionalDay(row.payDue2),
     status: typeof status === 'string' && TRIP_STATUS.has(status as TripStatus) ? (status as TripStatus) : null,
     note,
   }
@@ -190,9 +195,16 @@ export function parseTrip(value: unknown): Trip | null {
     parsed.weightTons == null ||
     parsed.rate == null ||
     parsed.payDue == null ||
+    parsed.customer2 == null ||
+    parsed.cargo2 == null ||
+    parsed.rate2 == null ||
+    parsed.payDue2 == null ||
     !parsed.status ||
     parsed.note == null
   ) {
+    return null
+  }
+  if (parsed.routeKind === 'round2' && (!parsed.customer2.trim() || parsed.rate2 <= 0)) {
     return null
   }
   const draft: Trip = {
@@ -218,6 +230,10 @@ export function parseTrip(value: unknown): Trip | null {
     weightTons: parsed.weightTons,
     rate: parsed.rate,
     payDue: parsed.payDue,
+    customer2: parsed.customer2,
+    cargo2: parsed.cargo2,
+    rate2: parsed.rate2,
+    payDue2: parsed.payDue2,
     status: parsed.status,
     note: parsed.note,
   }
@@ -323,11 +339,19 @@ export function parseRepair(value: unknown): RepairJob | null {
   }
 }
 
+function paymentLeg(value: unknown): PaymentLeg | null {
+  if (value == null || value === '' || value === 0 || value === '0') return 0
+  if (value === 1 || value === '1') return 1
+  if (value === 2 || value === '2') return 2
+  return null
+}
+
 export function parsePayment(value: unknown): Payment | null {
   const row = record(value)
   if (!row) return null
   const method = row.method
   const comment = optionalText(row.comment, 500)
+  const leg = paymentLeg(row.leg)
   const parsed = {
     id: id(row.id),
     tripId: id(row.tripId),
@@ -336,6 +360,7 @@ export function parsePayment(value: unknown): Payment | null {
     method: typeof method === 'string' && PAY_METHOD.has(method as PayMethod) ? (method as PayMethod) : null,
     counterparty: text(row.counterparty, 160),
     comment,
+    leg,
   }
   if (
     !parsed.id ||
@@ -344,7 +369,8 @@ export function parsePayment(value: unknown): Payment | null {
     parsed.amount == null ||
     !parsed.method ||
     !parsed.counterparty ||
-    parsed.comment == null
+    parsed.comment == null ||
+    parsed.leg == null
   ) {
     return null
   }
@@ -356,5 +382,6 @@ export function parsePayment(value: unknown): Payment | null {
     method: parsed.method,
     counterparty: parsed.counterparty,
     comment: parsed.comment,
+    leg: parsed.leg,
   }
 }

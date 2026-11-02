@@ -25,9 +25,25 @@ export function sumExpenses(rows: { category: string; amount: number; vat?: numb
   return round2(rows.reduce((total, row) => total + expenseWithVat(row.category, row.amount, row.vat), 0))
 }
 
+/** Суммарная ставка рейса: для круга ×2 — ставка 1-го и 2-го плеча. */
+export function tripTotalRate(trip: Pick<Trip, 'routeKind' | 'rate' | 'rate2'>) {
+  const second = (trip.routeKind ?? 'direct') === 'round2' ? trip.rate2 || 0 : 0
+  return round2((trip.rate || 0) + second)
+}
+
 export function debtOf(trip: Trip, paid: number) {
   if (trip.status === 'cancelled') return 0
-  return Math.max(0, round2(trip.rate - paid))
+  return Math.max(0, round2(tripTotalRate(trip) - paid))
+}
+
+export function legRate(trip: Trip, leg: 1 | 2) {
+  if (leg === 2) return (trip.routeKind ?? 'direct') === 'round2' ? trip.rate2 || 0 : 0
+  return trip.rate || 0
+}
+
+export function legDebt(trip: Trip, leg: 1 | 2, paidOnLeg: number) {
+  if (trip.status === 'cancelled') return 0
+  return Math.max(0, round2(legRate(trip, leg) - paidOnLeg))
 }
 
 export type PayMark = 'paid' | 'partial' | 'unpaid' | 'cancelled'
@@ -41,7 +57,7 @@ export function payMark(status: Trip['status'], rate: number, paid: number): Pay
 
 export function marginOf(trip: Trip, expenses: number) {
   if (trip.status === 'cancelled') return round2(-expenses)
-  return round2(trip.rate - expenses)
+  return round2(tripTotalRate(trip) - expenses)
 }
 
 export function repairCost(job: { partsCost: number; laborCost: number }) {
@@ -98,6 +114,10 @@ export function copiedTrip(source: Trip, trips: { number: string }[], today: str
     weightTons: source.weightTons,
     rate: source.rate,
     payDue: '',
+    customer2: source.customer2 ?? '',
+    cargo2: source.cargo2 ?? '',
+    rate2: source.rate2 ?? 0,
+    payDue2: '',
     status: 'planned',
     note: source.note,
   }

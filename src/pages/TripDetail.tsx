@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { debtOf, isOverdue, sumAmounts } from '../calc'
+import { debtOf, isOverdue, legDebt, sumAmounts, tripTotalRate } from '../calc'
 import {
   dateRu,
   money,
@@ -14,7 +14,14 @@ import { CopyTripDrawer, PaymentForm, TripForm } from '../forms'
 import { RoadMap } from '../RoadMap'
 import { useAuth } from '../auth'
 import { federalLabel, legKey } from '../roads'
-import { formatOdometer, tripOdometerKm, tripRoadPairs, tripRouteKindLabel, tripRouteLabel } from '../tripRoute.ts'
+import {
+  formatOdometer,
+  paymentLegLabel,
+  tripOdometerKm,
+  tripRoadPairs,
+  tripRouteKindLabel,
+  tripRouteLabel,
+} from '../tripRoute.ts'
 import { tripRouteDetail } from '../tripRouteRoad.ts'
 import { useData } from '../store'
 import { useRoadRoutes } from '../useRoutes'
@@ -103,7 +110,10 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
           <p className="muted">{tripRouteKindLabel(trip.routeKind ?? 'direct')}</p>
         ) : null}
         <p className="muted">
-          {dateRu(trip.date)} · {trip.customer} · {trip.cargo}
+          {dateRu(trip.date)}
+          {(trip.routeKind ?? 'direct') === 'round2'
+            ? ` · плечо 1: ${trip.customer} · ${trip.cargo} · плечо 2: ${trip.customer2} · ${trip.cargo2}`
+            : ` · ${trip.customer} · ${trip.cargo}`}
           {trip.weightTons ? ` · ${tons(trip.weightTons)}` : ''}
         </p>
         <p>
@@ -152,8 +162,8 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
 
       <section className="econ">
         <article>
-          <span>Ставка</span>
-          <strong className="num">{money(trip.rate)}</strong>
+          <span>{(trip.routeKind ?? 'direct') === 'round2' ? 'Ставка всего' : 'Ставка'}</span>
+          <strong className="num">{money(tripTotalRate(trip))}</strong>
         </article>
         <article>
           <span>Оплачено</span>
@@ -164,10 +174,22 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
           <strong className="num">{money(debt)}</strong>
         </article>
       </section>
-      <p className="muted">
-        Срок оплаты: {trip.payDue ? dateRu(trip.payDue) : 'не задан'}. Топливо, Платон и платные дороги записываются отдельно,
-        без машины. Суточные можно провести по машине или в общие расходы.
-      </p>
+      {(trip.routeKind ?? 'direct') === 'round2' ? (
+        <p className="muted">
+          Плечо 1 · {trip.customer}: ставка {money(trip.rate)}, оплачено{' '}
+          {money(sumAmounts(payments.filter((payment) => (payment.leg ?? 0) === 1)))}, долг{' '}
+          {money(legDebt(trip, 1, sumAmounts(payments.filter((payment) => (payment.leg ?? 0) === 1))))}
+          {trip.payDue ? `, срок ${dateRu(trip.payDue)}` : ''}. Плечо 2 · {trip.customer2}: ставка {money(trip.rate2)},
+          оплачено {money(sumAmounts(payments.filter((payment) => (payment.leg ?? 0) === 2)))}, долг{' '}
+          {money(legDebt(trip, 2, sumAmounts(payments.filter((payment) => (payment.leg ?? 0) === 2))))}
+          {trip.payDue2 ? `, срок ${dateRu(trip.payDue2)}` : ''}.
+        </p>
+      ) : (
+        <p className="muted">
+          Срок оплаты: {trip.payDue ? dateRu(trip.payDue) : 'не задан'}. Топливо, Платон и платные дороги записываются
+          отдельно, без машины. Суточные можно провести по машине или в общие расходы.
+        </p>
+      )}
 
       <section className="card">
           <div className="section-head">
@@ -186,6 +208,7 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
                 <thead>
                   <tr>
                     <th>Дата</th>
+                    <th>Плечо</th>
                     <th>Откуда</th>
                     <th className="num">Сумма</th>
                     <th />
@@ -195,6 +218,7 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
                   {payments.map((payment) => (
                     <tr key={payment.id}>
                       <td>{dateRu(payment.date)}</td>
+                      <td>{(trip.routeKind ?? 'direct') === 'round2' ? paymentLegLabel(payment.leg ?? 0) : '—'}</td>
                       <td>
                         {payment.counterparty}
                         <small className="muted">

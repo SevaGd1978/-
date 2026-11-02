@@ -4,12 +4,14 @@ export function foldCustomer(value: string) {
   return value.trim().toLowerCase().replaceAll('ё', 'е').replace(/\s+/g, ' ')
 }
 
-export function customerCatalog(saved: string[], trips: { customer: string }[]) {
+export function customerCatalog(saved: string[], trips: { customer: string; customer2?: string }[]) {
   const counts = new Map<string, number>()
   for (const trip of trips) {
-    const label = trip.customer.trim().replace(/\s+/g, ' ')
-    if (!label) continue
-    counts.set(label, (counts.get(label) ?? 0) + 1)
+    for (const raw of [trip.customer, trip.customer2 ?? '']) {
+      const label = raw.trim().replace(/\s+/g, ' ')
+      if (!label) continue
+      counts.set(label, (counts.get(label) ?? 0) + 1)
+    }
   }
   const labels = new Set<string>(counts.keys())
   for (const name of saved) {

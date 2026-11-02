@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { debtOf, isOverdue, payMark, sumAmounts } from '../calc'
+import { debtOf, isOverdue, payMark, sumAmounts, tripTotalRate } from '../calc'
 import {
   dateRu,
   money,
@@ -164,7 +164,7 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
                         onDoubleClick={() => onOpen(row.trip.id)}
                       >
                         <td className="pay-col">
-                          <PayDot status={row.trip.status} rate={row.trip.rate} paid={row.paid} />
+                          <PayDot status={row.trip.status} rate={tripTotalRate(row.trip)} paid={row.paid} />
                         </td>
                         <td>{dateRu(row.trip.date)}</td>
                         <td className="pay-when" title={row.paidOn ? 'Дата последнего поступления' : 'Оплат ещё нет'}>
@@ -191,10 +191,15 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
                         <td>
                           <Badge tone={tripTone(row.trip.status)}>{tripStatusLabel[row.trip.status]}</Badge>
                         </td>
-                        <td>{row.trip.customer}</td>
-                        <td className="num">{money(row.trip.rate)}</td>
+                        <td>
+                          {row.trip.customer}
+                          {(row.trip.routeKind ?? 'direct') === 'round2' && row.trip.customer2
+                            ? ` / ${row.trip.customer2}`
+                            : ''}
+                        </td>
+                        <td className="num">{money(tripTotalRate(row.trip))}</td>
                         <td className="num">{money(row.paid)}</td>
-                        <td className="num">{payPercent(row.trip.rate, row.paid)}</td>
+                        <td className="num">{payPercent(tripTotalRate(row.trip), row.paid)}</td>
                         <td className={row.overdue ? 'is-overdue' : undefined}>
                           {row.trip.payDue ? dateRu(row.trip.payDue) : '—'}
                         </td>
@@ -222,7 +227,12 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
                   }
                   driver={selected.driver?.name ?? 'Водитель не указан'}
                   phone={selected.driver?.phone || 'Телефон не указан'}
-                  rate={selected.trip.rate}
+                  rate={tripTotalRate(selected.trip)}
+                  customerExtra={
+                    (selected.trip.routeKind ?? 'direct') === 'round2' && selected.trip.customer2
+                      ? selected.trip.customer2
+                      : ''
+                  }
                   paid={selected.paid}
                   debt={selected.debt}
                   status={selected.trip.status}
@@ -266,6 +276,7 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
 function TripCard({
   number,
   customer,
+  customerExtra = '',
   route,
   distance,
   federal,
@@ -283,6 +294,7 @@ function TripCard({
 }: {
   number: string
   customer: string
+  customerExtra?: string
   route: string
   distance: string
   federal: string
@@ -307,7 +319,10 @@ function TripCard({
       <dl className="trip-facts">
         <div>
           <dt>Заказчик</dt>
-          <dd>{customer}</dd>
+          <dd>
+            {customer}
+            {customerExtra ? ` / ${customerExtra}` : ''}
+          </dd>
         </div>
         <div>
           <dt>Маршрут</dt>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { debtOf, isOverdue, sumAmounts } from '../calc'
+import { debtOf, isOverdue, sumAmounts, tripTotalRate } from '../calc'
 import { dateRu, money, payMethodLabel, todayIso } from '../format'
 import { PaymentForm } from '../forms'
 import { useAuth } from '../auth'
@@ -106,7 +106,7 @@ export function PaymentsPage({ onOpenTrip }: { onOpenTrip: (id: string) => void 
                       {row.trip.payDue ? dateRu(row.trip.payDue) : '—'}
                       {row.overdue ? <Badge tone="bad">Просрочено</Badge> : null}
                     </td>
-                    <td className="num">{money(row.trip.rate)}</td>
+                    <td className="num">{money(tripTotalRate(row.trip))}</td>
                     <td className="num">{money(row.paid)}</td>
                     <td className="num">{money(row.debt)}</td>
                     <td className="row-actions">

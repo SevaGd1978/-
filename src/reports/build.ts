@@ -1,4 +1,15 @@
-import { debtOf, expenseVat, expenseWithVat, inRange, isOverdue, repairCost, round2, sumAmounts, sumExpenses } from '../calc'
+import {
+  debtOf,
+  expenseVat,
+  expenseWithVat,
+  inRange,
+  isOverdue,
+  repairCost,
+  round2,
+  sumAmounts,
+  sumExpenses,
+  tripTotalRate,
+} from '../calc'
 import { formatOdometer, tripOdometerKm, tripRouteKindLabel, tripRouteReportLabel } from '../tripRoute.ts'
 import {
   dateRu,
@@ -203,7 +214,7 @@ function absorb(bucket: EconBucket, state: State, trip: Trip) {
   const economics = tripEconomics(state, trip)
   bucket.count += 1
   bucket.weight = round2(bucket.weight + trip.weightTons)
-  bucket.rate = round2(bucket.rate + trip.rate)
+  bucket.rate = round2(bucket.rate + tripTotalRate(trip))
   bucket.paid = round2(bucket.paid + economics.paid)
   bucket.debt = round2(bucket.debt + economics.debt)
 }
@@ -362,13 +373,17 @@ function tripSection(state: State, from: string, to: string): ReportSection {
     column('Погр. 2', 'left', 16, 'text'),
     column('Выгр. 2', 'left', 16, 'text'),
     column('Возврат', 'left', 16, 'text'),
-    column('Заказчик', 'left', 28, 'text'),
-    column('Груз', 'left', 28, 'text'),
+    column('Заказчик 1', 'left', 24, 'text'),
+    column('Заказчик 2', 'left', 24, 'text'),
+    column('Груз 1', 'left', 22, 'text'),
+    column('Груз 2', 'left', 22, 'text'),
     column('Вес, т', 'right', 12, 'number'),
     column('Машина', 'left', 26, 'text'),
     column('Водитель', 'left', 22, 'text'),
     column('Статус', 'left', 16, 'text'),
-    column('Ставка', 'right', 14, 'money'),
+    column('Ставка 1', 'right', 14, 'money'),
+    column('Ставка 2', 'right', 14, 'money'),
+    column('Ставка всего', 'right', 14, 'money'),
     column('Оплачено', 'right', 14, 'money'),
     column('Долг', 'right', 14, 'money'),
     column('Зарплата', 'right', 14, 'money'),
@@ -398,12 +413,16 @@ function tripSection(state: State, from: string, to: string): ReportSection {
         kind === 'round2' ? trip.unload2 || '—' : '—',
         isRound ? trip.returnCity || trip.from || '—' : '—',
         trip.customer,
+        kind === 'round2' ? trip.customer2 || '—' : '—',
         trip.cargo,
+        kind === 'round2' ? trip.cargo2 || '—' : '—',
         trip.weightTons,
         vehicleLabel(state, trip.vehicleId),
         driverName(state, trip.driverId),
         tripStatusLabel[trip.status],
         trip.rate,
+        kind === 'round2' ? trip.rate2 || 0 : 0,
+        tripTotalRate(trip),
         economics.paid,
         economics.debt,
         costs.salary,
@@ -754,7 +773,7 @@ function debtBreakdown(state: State, from: string, to: string, today: string): R
     if (economics.debt <= 0) continue
     const bucket = groups.get(trip.customer) ?? { count: 0, rate: 0, paid: 0, debt: 0, overdue: 0 }
     bucket.count += 1
-    bucket.rate = round2(bucket.rate + trip.rate)
+    bucket.rate = round2(bucket.rate + tripTotalRate(trip))
     bucket.paid = round2(bucket.paid + economics.paid)
     bucket.debt = round2(bucket.debt + economics.debt)
     if (isOverdue(trip, economics.debt, today)) bucket.overdue = round2(bucket.overdue + economics.debt)
