@@ -113,14 +113,6 @@ export function TripForm({
       setError('Заполните номер, дату, заказчика и груз.')
       return
     }
-    if (routeKind === 'round2' && !customer2.trim()) {
-      setError('Укажите заказчика второго плеча.')
-      return
-    }
-    if (routeKind === 'round2' && !cargo2.trim()) {
-      setError('Укажите груз второго плеча.')
-      return
-    }
     const routeError = validateTripRoute({
       routeKind,
       from,
@@ -172,8 +164,9 @@ export function TripForm({
       setError(routeKind === 'round2' ? 'Укажите ставку первого плеча больше нуля.' : 'Укажите ставку больше нуля.')
       return
     }
-    if (routeKind === 'round2' && (parsedRate2 === null || parsedRate2 <= 0)) {
-      setError('Укажите ставку второго плеча больше нуля.')
+    // Ставка / заказчик / груз плеча 2 необязательны — допишут позже.
+    if (routeKind === 'round2' && rate2.trim() && (parsedRate2 === null || parsedRate2 < 0)) {
+      setError('Ставку второго плеча укажите числом или оставьте пустой.')
       return
     }
     if (parsedWeight === null) {
@@ -210,7 +203,7 @@ export function TripForm({
         payDue,
         customer2: customer2.trim(),
         cargo2: cargo2.trim(),
-        rate2: routeKind === 'round2' ? parsedRate2! : 0,
+        rate2: routeKind === 'round2' ? (rate2.trim() ? parsedRate2! : 0) : 0,
         payDue2: routeKind === 'round2' ? payDue2 : '',
         status,
         note: note.trim(),
@@ -279,7 +272,7 @@ export function TripForm({
           </Field>
           {routeKind === 'round2' ? (
             <>
-              <CityField label="Погрузка 2" value={load2} onChange={setLoad2} placeholder="Уфа" />
+              <CityField label="Погрузка 2" value={load2} onChange={setLoad2} placeholder="Позже" />
               <Field label="Одометр · погрузка 2, км">
                 <input
                   inputMode="numeric"
@@ -288,7 +281,7 @@ export function TripForm({
                   placeholder="Необязательно"
                 />
               </Field>
-              <CityField label="Выгрузка 2" value={unload2} onChange={setUnload2} placeholder="Челябинск" />
+              <CityField label="Выгрузка 2" value={unload2} onChange={setUnload2} placeholder="Позже" />
               <Field label="Одометр · выгрузка 2, км">
                 <input
                   inputMode="numeric"
@@ -328,7 +321,10 @@ export function TripForm({
         </select>
       </Field>
       {routeKind === 'round2' ? (
-        <p className="hint wide">Плечо 1 — первая погрузка и выгрузка. Плечо 2 — вторая пара точек и отдельная оплата.</p>
+        <p className="hint wide">
+          Плечо 1 — первая погрузка и выгрузка. Плечо 2 — вторая пара точек и отдельная оплата: города, заказчика,
+          груз и ставку можно оставить пустыми и дописать позже.
+        </p>
       ) : null}
       <CustomerField
         label={routeKind === 'round2' ? 'Заказчик · плечо 1' : 'Заказчик'}
@@ -355,16 +351,21 @@ export function TripForm({
             value={customer2}
             onChange={setCustomer2}
             catalog={customerCatalog(state.customers, state.trips)}
+            placeholder="Можно позже"
           />
           <Field label="Груз · плечо 2">
-            <input value={cargo2} onChange={(event) => setCargo2(event.target.value)} />
+            <input
+              value={cargo2}
+              onChange={(event) => setCargo2(event.target.value)}
+              placeholder="Можно позже"
+            />
           </Field>
           <Field label="Ставка · плечо 2, ₽">
             <input
               inputMode="decimal"
               value={rate2}
               onChange={(event) => setRate2(event.target.value)}
-              placeholder="72000"
+              placeholder="Можно позже"
             />
           </Field>
           <Field label="Срок оплаты · плечо 2">
@@ -839,7 +840,7 @@ export function PaymentForm({
   function chooseLeg(nextLeg: PaymentLeg) {
     setLeg(nextLeg)
     if (!trip) return
-    if (nextLeg === 2) setCounterparty(trip.customer2 || trip.customer)
+    if (nextLeg === 2) setCounterparty(trip.customer2 || '')
     else if (nextLeg === 1) setCounterparty(trip.customer)
     if (nextLeg === 1 || nextLeg === 2) {
       const paidLeg = sumAmounts(

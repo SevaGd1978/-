@@ -204,7 +204,8 @@ export function parseTrip(value: unknown): Trip | null {
   ) {
     return null
   }
-  if (parsed.routeKind === 'round2' && (!parsed.customer2.trim() || parsed.rate2 <= 0)) {
+  // Второе плечо кругорейса ×2 можно сохранить пустым и дописать позже.
+  if (parsed.routeKind === 'round2' && parsed.rate2 < 0) {
     return null
   }
   const draft: Trip = {

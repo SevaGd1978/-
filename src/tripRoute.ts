@@ -19,7 +19,12 @@ export function tripRouteLabel(trip: Pick<Trip, 'routeKind' | 'from' | 'to' | 'l
   }
   if (kind === 'round2') {
     const back = trip.returnCity || trip.from
-    return `${trip.from} → погр. ${trip.load1} → выгр. ${trip.unload1} → погр. ${trip.load2} → выгр. ${trip.unload2} → ${back}`
+    const parts = [trip.from, `погр. ${trip.load1}`, `выгр. ${trip.unload1}`]
+    if (trip.load2.trim()) parts.push(`погр. ${trip.load2}`)
+    if (trip.unload2.trim()) parts.push(`выгр. ${trip.unload2}`)
+    if (!trip.load2.trim() && !trip.unload2.trim()) parts.push('плечо 2 позже')
+    parts.push(back)
+    return parts.join(' → ')
   }
   return `${trip.from} – ${trip.to}`
 }
@@ -45,6 +50,14 @@ export function tripRoadPairs(trip: Trip): { from: string; to: string }[] {
   }
   if (kind === 'round2') {
     const back = trip.returnCity || trip.from
+    const hasSecond = Boolean(trip.load2.trim() && trip.unload2.trim())
+    if (!hasSecond) {
+      return [
+        { from: trip.from, to: trip.load1 },
+        { from: trip.load1, to: trip.unload1 },
+        { from: trip.unload1, to: back },
+      ].filter((pair) => pair.from && pair.to)
+    }
     return [
       { from: trip.from, to: trip.load1 },
       { from: trip.load1, to: trip.unload1 },
@@ -72,8 +85,13 @@ export function validateTripRoute(trip: Pick<Trip, 'routeKind' | 'from' | 'to' |
   }
   if (!trip.from.trim()) return 'Укажите базу выезда.'
   if (!trip.load1.trim() || !trip.unload1.trim()) return 'Укажите города первой загрузки и выгрузки.'
-  if (kind === 'round2' && (!trip.load2.trim() || !trip.unload2.trim())) {
-    return 'Укажите города второй загрузки и выгрузки.'
+  if (kind === 'round2') {
+    const load2 = trip.load2.trim()
+    const unload2 = trip.unload2.trim()
+    // Второе плечо можно оставить пустым и дописать позже; если начали — нужны оба города.
+    if ((load2 && !unload2) || (!load2 && unload2)) {
+      return 'Для второго плеча укажите оба города или оставьте оба пустыми.'
+    }
   }
   return null
 }
