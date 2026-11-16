@@ -2,21 +2,25 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { tripStatusLabel } from '../format'
 import { tripRouteKindLabel, tripRouteLabel } from '../tripRoute'
 import type { Trip, TripExpense } from '../types'
-
-type DriverSession = {
-  vehicleId: string
-  plate: string
-  model: string
-  kind: string
-}
-
-type DriverHome = {
-  vehicle: DriverSession
-  activeTripId: string | null
-  trips: Trip[]
-  fuel: TripExpense[]
-  drivers: Record<string, string>
-}
+import {
+  applyFuelLocal,
+  applyOdometerLocal,
+  clearDriverLocal,
+  enqueue,
+  isProbablyOffline,
+  loadCache,
+  loadCachedSession,
+  loadQueue,
+  newLocalId,
+  ODOMETER_LABELS,
+  removeQueueItem,
+  saveCache,
+  saveCachedSession,
+  type DriverHome,
+  type DriverSession,
+  type OdometerField,
+  type PendingItem,
+} from './offline'
 
 function todayIso() {
   const now = new Date()
@@ -47,40 +51,125 @@ export function DriverApp() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
+  const [online, setOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine)
+  const [pendingCount, setPendingCount] = useState(() => loadQueue().length)
+  const [syncing, setSyncing] = useState(false)
+  const [fromCache, setFromCache] = useState(false)
 
-  const applyHome = useCallback((body: DriverHome) => {
+  const refreshPending = useCallback(() => setPendingCount(loadQueue().length), [])
+
+  const applyHome = useCallback((body: DriverHome, opts?: { cache?: boolean; cached?: boolean }) => {
     setHome(body)
     setSession(body.vehicle)
+    setFromCache(Boolean(opts?.cached))
     setSelectedTripId((current) => {
       if (current && body.trips.some((trip) => trip.id === current)) return current
       return body.activeTripId || body.trips[0]?.id || null
     })
+    if (opts?.cache !== false) saveCache(body.vehicle, body)
   }, [])
 
   const loadHome = useCallback(async () => {
-    const response = await fetch('/api/driver/home')
-    if (!response.ok) {
-      setSession(null)
-      setHome(null)
+    try {
+      const response = await fetch('/api/driver/home')
+      if (!response.ok) {
+        if (response.status === 401) {
+          clearDriverLocal()
+          setSession(null)
+          setHome(null)
+          return null
+        }
+        throw new Error('home')
+      }
+      const body = (await response.json()) as DriverHome
+      applyHome(body, { cached: false })
+      return body
+    } catch (error) {
+      const cached = loadCache()
+      if (cached) {
+        applyHome(cached.home, { cache: false, cached: true })
+        setSession(cached.session)
+        return cached.home
+      }
+      if (isProbablyOffline(error)) {
+        setError('Нет сети и нет сохранённых данных на телефоне')
+      }
       return null
     }
-    const body = (await response.json()) as DriverHome
-    applyHome(body)
-    return body
   }, [applyHome])
+
+  const flushQueue = useCallback(async () => {
+    if (!navigator.onLine) return
+    const queue = loadQueue()
+    if (!queue.length) {
+      refreshPending()
+      return
+    }
+    setSyncing(true)
+    try {
+      for (const item of queue) {
+        const ok = await sendPending(item)
+        if (!ok) break
+        removeQueueItem(item.id)
+      }
+      await loadHome()
+      refreshPending()
+      if (!loadQueue().length) setNotice('Данные с телефона отправлены в программу')
+    } finally {
+      setSyncing(false)
+      refreshPending()
+    }
+  }, [loadHome, refreshPending])
+
+  useEffect(() => {
+    function onOnline() {
+      setOnline(true)
+      void flushQueue()
+    }
+    function onOffline() {
+      setOnline(false)
+    }
+    window.addEventListener('online', onOnline)
+    window.addEventListener('offline', onOffline)
+    return () => {
+      window.removeEventListener('online', onOnline)
+      window.removeEventListener('offline', onOffline)
+    }
+  }, [flushQueue])
 
   useEffect(() => {
     void (async () => {
-      const response = await fetch('/api/driver/session')
-      const body = await readJson(response)
-      const next = body?.session as DriverSession | null | undefined
-      if (next) {
-        setSession(next)
-        await loadHome()
+      try {
+        const response = await fetch('/api/driver/session')
+        const body = await readJson(response)
+        const next = body?.session as DriverSession | null | undefined
+        if (next) {
+          saveCachedSession(next)
+          setSession(next)
+          await loadHome()
+          await flushQueue()
+        } else {
+          const cachedSession = loadCachedSession()
+          const cached = loadCache()
+          if (cachedSession && cached) {
+            setSession(cachedSession)
+            applyHome(cached.home, { cache: false, cached: true })
+          }
+        }
+      } catch {
+        const cachedSession = loadCachedSession()
+        const cached = loadCache()
+        if (cachedSession && cached) {
+          setSession(cachedSession)
+          applyHome(cached.home, { cache: false, cached: true })
+          setError('')
+        }
+      } finally {
+        setReady(true)
+        refreshPending()
       }
-      setReady(true)
     })()
-  }, [loadHome])
+  }, [applyHome, flushQueue, loadHome, refreshPending])
 
   const trip = useMemo(
     () => home?.trips.find((item) => item.id === selectedTripId) || home?.trips[0] || null,
@@ -108,59 +197,124 @@ export function DriverApp() {
         return
       }
       await loadHome()
+      await flushQueue()
+    } catch (error) {
+      setError(isProbablyOffline(error) ? 'Нет интернета — войдите, когда появится связь' : 'Не удалось войти')
     } finally {
       setBusy(false)
     }
   }
 
   async function logout() {
-    await fetch('/api/driver/logout', { method: 'POST' })
+    try {
+      await fetch('/api/driver/logout', { method: 'POST' })
+    } catch {
+      /* offline logout clears local only */
+    }
+    clearDriverLocal()
     setSession(null)
     setHome(null)
     setSelectedTripId(null)
+    setPendingCount(0)
   }
 
-  async function saveOdometer(fields: Record<string, number | null>) {
-    if (!trip) return
+  async function saveOdometerField(field: OdometerField, value: number | null) {
+    if (!trip || !home || !session) return
     setBusy(true)
     setError('')
     setNotice('')
+    const localHome = applyOdometerLocal(home, trip.id, field, value)
+    applyHome(localHome)
+
+    const pending: PendingItem = {
+      id: newLocalId('odo'),
+      type: 'odometer',
+      tripId: trip.id,
+      field,
+      value,
+      createdAt: new Date().toISOString(),
+    }
+
     try {
+      if (!navigator.onLine) throw new TypeError('offline')
       const response = await fetch('/api/driver/odometer', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ tripId: trip.id, ...fields }),
+        body: JSON.stringify({ tripId: trip.id, [field]: value }),
       })
       const body = await readJson(response)
       if (!response.ok) {
         setError(typeof body?.error === 'string' ? body.error : 'Не удалось сохранить одометр')
+        await loadHome()
         return
       }
       applyHome(body as unknown as DriverHome)
-      setNotice('Одометр сохранён')
+      setNotice(`${ODOMETER_LABELS[field].round}: сохранено`)
+    } catch (error) {
+      if (!isProbablyOffline(error)) {
+        setError('Ошибка сохранения одометра')
+        return
+      }
+      enqueue(pending)
+      refreshPending()
+      setNotice(`${ODOMETER_LABELS[field].round}: сохранено на телефоне, уйдёт при связи`)
     } finally {
       setBusy(false)
     }
   }
 
   async function saveFuel(amount: number, date: string, comment: string) {
-    if (!trip) return
+    if (!trip || !home) return
     setBusy(true)
     setError('')
     setNotice('')
+    const expenseId = newLocalId('e')
+    const expense: TripExpense = {
+      id: expenseId,
+      vehicleId: '',
+      tripId: trip.id,
+      date,
+      category: 'fuel',
+      amount,
+      vat: 0,
+      comment: comment.trim() || 'Соляра, чек от водителя',
+    }
+    applyHome(applyFuelLocal(home, expense))
+
+    const pending: PendingItem = {
+      id: newLocalId('fuel'),
+      type: 'fuel',
+      tripId: trip.id,
+      amount,
+      date,
+      comment: expense.comment,
+      expenseId,
+      createdAt: new Date().toISOString(),
+    }
+
     try {
+      if (!navigator.onLine) throw new TypeError('offline')
       const response = await fetch('/api/driver/fuel', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ tripId: trip.id, amount, date, comment }),
+        body: JSON.stringify({ tripId: trip.id, amount, date, comment: expense.comment, expenseId }),
       })
       const body = await readJson(response)
       if (!response.ok) {
         setError(typeof body?.error === 'string' ? body.error : 'Не удалось записать чек')
+        await loadHome()
         return
       }
       applyHome(body as unknown as DriverHome)
       setNotice('Чек на соляру записан')
+    } catch (error) {
+      if (!isProbablyOffline(error)) {
+        setError('Ошибка записи чека')
+        return
+      }
+      enqueue(pending)
+      refreshPending()
+      setNotice('Чек сохранён на телефоне, уйдёт при связи')
     } finally {
       setBusy(false)
     }
@@ -195,7 +349,17 @@ export function DriverApp() {
           {driverName ? ` · ${driverName}` : ''}
         </span>
       </div>
+      <div className="driver-status-row">
+        <span className={online ? 'driver-online' : 'driver-offline'}>
+          {online ? (syncing ? 'Синхронизация…' : 'Сеть есть') : 'Без сети — данные на телефоне'}
+        </span>
+        {pendingCount > 0 ? <span className="driver-pending">В очереди: {pendingCount}</span> : null}
+        {fromCache && online ? <span className="driver-muted">Показан кэш, обновляем…</span> : null}
+      </div>
       <div className="driver-actions" style={{ marginBottom: 14 }}>
+        <button type="button" className="driver-btn ghost" onClick={() => void flushQueue()} disabled={!online || syncing}>
+          Синхронизировать
+        </button>
         <button type="button" className="driver-btn ghost" onClick={() => void logout()}>
           Выйти
         </button>
@@ -227,12 +391,45 @@ export function DriverApp() {
       {trip ? (
         <>
           <TripCard trip={trip} driverName={driverName} />
-          <OdometerCard trip={trip} busy={busy} onSave={saveOdometer} />
+          <OdometerCard trip={trip} busy={busy} onSaveField={saveOdometerField} />
           <FuelCard fuel={fuel} busy={busy} onSave={saveFuel} />
         </>
       ) : null}
     </div>
   )
+}
+
+async function sendPending(item: PendingItem) {
+  try {
+    if (item.type === 'odometer') {
+      const response = await fetch('/api/driver/odometer', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ tripId: item.tripId, [item.field]: item.value }),
+      })
+      if (response.status === 401) return false
+      if (!response.ok) {
+        // Конфликт порядка одометра — оставляем в очереди до правки
+        return response.status >= 500
+      }
+      return true
+    }
+    const response = await fetch('/api/driver/fuel', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        tripId: item.tripId,
+        amount: item.amount,
+        date: item.date,
+        comment: item.comment,
+        expenseId: item.expenseId,
+      }),
+    })
+    if (response.status === 401) return false
+    return response.ok || response.status === 409
+  } catch {
+    return false
+  }
 }
 
 function LoginCard({
@@ -311,83 +508,73 @@ function TripCard({ trip, driverName }: { trip: Trip; driverName: string }) {
 function OdometerCard({
   trip,
   busy,
-  onSave,
+  onSaveField,
 }: {
   trip: Trip
   busy: boolean
-  onSave: (fields: Record<string, number | null>) => Promise<void>
+  onSaveField: (field: OdometerField, value: number | null) => Promise<void>
 }) {
   const kind = trip.routeKind ?? 'direct'
-  const [load1, setLoad1] = useState(trip.odometerLoad1 == null ? '' : String(trip.odometerLoad1))
-  const [unload1, setUnload1] = useState(trip.odometerUnload1 == null ? '' : String(trip.odometerUnload1))
-  const [load2, setLoad2] = useState(trip.odometerLoad2 == null ? '' : String(trip.odometerLoad2))
-  const [unload2, setUnload2] = useState(trip.odometerUnload2 == null ? '' : String(trip.odometerUnload2))
+  const fields: OdometerField[] =
+    kind === 'round2'
+      ? ['odometerLoad1', 'odometerUnload1', 'odometerLoad2', 'odometerUnload2']
+      : ['odometerLoad1', 'odometerUnload1']
+
+  return (
+    <section className="driver-card">
+      <h2>Одометр</h2>
+      <p className="driver-muted">Каждая строка сохраняется отдельно — на погрузке и на разгрузке.</p>
+      {fields.map((field) => (
+        <OdometerRow
+          key={`${trip.id}-${field}`}
+          label={kind === 'direct' ? ODOMETER_LABELS[field].direct : ODOMETER_LABELS[field].round}
+          value={trip[field]}
+          busy={busy}
+          onSave={(value) => onSaveField(field, value)}
+        />
+      ))}
+    </section>
+  )
+}
+
+function OdometerRow({
+  label,
+  value,
+  busy,
+  onSave,
+}: {
+  label: string
+  value: number | null
+  busy: boolean
+  onSave: (value: number | null) => Promise<void>
+}) {
+  const [text, setText] = useState(value == null ? '' : String(value))
 
   useEffect(() => {
-    setLoad1(trip.odometerLoad1 == null ? '' : String(trip.odometerLoad1))
-    setUnload1(trip.odometerUnload1 == null ? '' : String(trip.odometerUnload1))
-    setLoad2(trip.odometerLoad2 == null ? '' : String(trip.odometerLoad2))
-    setUnload2(trip.odometerUnload2 == null ? '' : String(trip.odometerUnload2))
-  }, [trip.id, trip.odometerLoad1, trip.odometerUnload1, trip.odometerLoad2, trip.odometerUnload2])
-
-  function parseField(value: string) {
-    const trimmed = value.trim()
-    if (!trimmed) return null
-    const number = Number(trimmed.replace(/\s/g, ''))
-    if (!Number.isFinite(number) || number < 0 || Math.floor(number) !== number) return undefined
-    return number
-  }
+    setText(value == null ? '' : String(value))
+  }, [value])
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    const parsedLoad1 = parseField(load1)
-    const parsedUnload1 = parseField(unload1)
-    if (parsedLoad1 === undefined || parsedUnload1 === undefined) return
-    const fields: Record<string, number | null> = {
-      odometerLoad1: parsedLoad1,
-      odometerUnload1: parsedUnload1,
+    const trimmed = text.trim()
+    if (!trimmed) {
+      void onSave(null)
+      return
     }
-    if (kind === 'round2') {
-      const parsedLoad2 = parseField(load2)
-      const parsedUnload2 = parseField(unload2)
-      if (parsedLoad2 === undefined || parsedUnload2 === undefined) return
-      fields.odometerLoad2 = parsedLoad2
-      fields.odometerUnload2 = parsedUnload2
-    }
-    void onSave(fields)
+    const number = Number(trimmed.replace(/\s/g, ''))
+    if (!Number.isFinite(number) || number < 0 || Math.floor(number) !== number) return
+    void onSave(number)
   }
 
   return (
-    <form className="driver-card" onSubmit={submit}>
-      <h2>Одометр</h2>
-      <p className="driver-muted">Введите километраж на погрузке и выгрузке.</p>
-      <div className="driver-grid">
-        <label className="driver-field">
-          <span>{kind === 'direct' ? 'Погрузка, км' : 'Погрузка 1, км'}</span>
-          <input inputMode="numeric" value={load1} onChange={(event) => setLoad1(event.target.value)} />
-        </label>
-        <label className="driver-field">
-          <span>{kind === 'direct' ? 'Выгрузка, км' : 'Выгрузка 1, км'}</span>
-          <input inputMode="numeric" value={unload1} onChange={(event) => setUnload1(event.target.value)} />
-        </label>
-        {kind === 'round2' ? (
-          <>
-            <label className="driver-field">
-              <span>Погрузка 2, км</span>
-              <input inputMode="numeric" value={load2} onChange={(event) => setLoad2(event.target.value)} />
-            </label>
-            <label className="driver-field">
-              <span>Выгрузка 2, км</span>
-              <input inputMode="numeric" value={unload2} onChange={(event) => setUnload2(event.target.value)} />
-            </label>
-          </>
-        ) : null}
-      </div>
-      <div className="driver-actions">
-        <button type="submit" className="driver-btn primary" disabled={busy}>
-          Сохранить одометр
-        </button>
-      </div>
+    <form className="driver-odo-row" onSubmit={submit}>
+      <label className="driver-field">
+        <span>{label}, км</span>
+        <input inputMode="numeric" value={text} onChange={(event) => setText(event.target.value)} />
+      </label>
+      <button type="submit" className="driver-btn primary" disabled={busy}>
+        Сохранить
+      </button>
     </form>
   )
 }
@@ -418,7 +605,7 @@ function FuelCard({
   return (
     <section className="driver-card">
       <h2>Чеки на соляру</h2>
-      <p className="driver-muted">Сумма с чека АЗС по выбранному рейсу.</p>
+      <p className="driver-muted">Без сети чек остаётся на телефоне и уйдёт при появлении связи.</p>
       {fuel.length === 0 ? (
         <p className="driver-muted">Пока нет записей.</p>
       ) : (

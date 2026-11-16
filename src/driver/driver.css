@@ -168,6 +168,43 @@
   margin-bottom: 8px;
 }
 
+.driver-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.driver-online {
+  color: #9be7b8;
+}
+
+.driver-offline {
+  color: #ffc27a;
+}
+
+.driver-pending {
+  color: #ffd2a8;
+}
+
+.driver-odo-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 12px;
+}
+
+.driver-odo-row .driver-field {
+  margin-bottom: 0;
+}
+
+.driver-odo-row .driver-btn {
+  white-space: nowrap;
+  padding: 14px 12px;
+}
+
 @media (max-width: 420px) {
   .driver-grid {
     grid-template-columns: 1fr;

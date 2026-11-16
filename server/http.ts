@@ -341,8 +341,9 @@ function fuelBody(body: unknown) {
         ? Number(row.amount.replace(/\s/g, '').replace(',', '.'))
         : NaN
   const comment = typeof row.comment === 'string' ? row.comment : ''
+  const expenseId = typeof row.expenseId === 'string' ? row.expenseId.trim() : undefined
   if (!date || !Number.isFinite(amount)) return null
-  return { tripId, date, amount, comment }
+  return { tripId, date, amount, comment, expenseId }
 }
 
 async function handleLogin(db: DatabaseSync, req: IncomingMessage, res: ServerResponse, secure: boolean) {

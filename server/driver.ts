@@ -153,7 +153,7 @@ export function updateDriverOdometer(
 export function addDriverFuel(
   db: DatabaseSync,
   session: DriverSession,
-  input: { tripId: string; amount: number; date: string; comment: string },
+  input: { tripId: string; amount: number; date: string; comment: string; expenseId?: string },
 ) {
   const { state } = readResult(db)
   const trip = state.trips.find((item) => item.id === input.tripId)
@@ -167,8 +167,12 @@ export function addDriverFuel(
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
     return { ok: false as const, status: 400, error: 'Укажите дату чека' }
   }
+  const expenseId =
+    input.expenseId && /^[A-Za-z0-9_-]{1,64}$/.test(input.expenseId)
+      ? input.expenseId
+      : `e_${randomBytes(4).toString('hex')}`
   const expense: TripExpense = {
-    id: `e_${randomBytes(4).toString('hex')}`,
+    id: expenseId,
     vehicleId: '',
     tripId: trip.id,
     date: input.date,
