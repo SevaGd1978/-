@@ -86,6 +86,7 @@ export function FleetPage() {
                   <th>Номер</th>
                   <th>Тип</th>
                   <th>Модель</th>
+                  <th>Код приложения</th>
                   <th>Статус</th>
                   <th>Сейчас</th>
                   {allowed ? <th className="fleet-action"><span className="sr">Действие</span></th> : null}
@@ -104,6 +105,13 @@ export function FleetPage() {
                       </td>
                       <td>{vehicle.kind}</td>
                       <td>{vehicle.model}</td>
+                      <td>
+                        {vehicle.driverPin ? (
+                          <code className="fleet-pin">{vehicle.driverPin}</code>
+                        ) : (
+                          <span className="muted">не задан</span>
+                        )}
+                      </td>
                       <td>
                         <Badge tone={vehicleTone(duty)}>{vehicleStatusLabel[duty]}</Badge>
                         {duty !== vehicle.status ? (

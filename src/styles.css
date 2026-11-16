@@ -432,6 +432,17 @@ input[readonly] { background: #f6f1ea; }
 .city-list button span { color: var(--muted); font-size: 13px; font-weight: 400; letter-spacing: 0; text-transform: none; }
 .city-empty { padding: 8px 12px; color: var(--muted); font-size: 14px; }
 .wide { grid-column: 1 / -1; }
+.pin-row { display: flex; gap: 8px; align-items: stretch; }
+.pin-row .pin-input { flex: 1; min-width: 0; font-size: 18px; font-weight: 700; letter-spacing: 0.12em; }
+.fleet-pin {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #f3eadf;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
 .form-actions { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .form-actions-right { display: flex; gap: 8px; }
 .form-error { color: var(--bad); font-weight: 700; }

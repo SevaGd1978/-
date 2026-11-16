@@ -1016,15 +1016,29 @@ export function VehicleForm({
           autoComplete="off"
         />
       </Field>
-      <Field label="Код водителя" wide>
-        <input
-          value={driverPin}
-          onChange={(event) => setDriverPin(event.target.value)}
-          placeholder="4–8 цифр, для входа в приложение"
-          inputMode="numeric"
-          autoComplete="off"
-        />
+      <Field label="Код входа в приложение водителя" wide>
+        <div className="pin-row">
+          <input
+            value={driverPin}
+            onChange={(event) => setDriverPin(event.target.value.replace(/\D/g, '').slice(0, 8))}
+            placeholder="Например 1234"
+            inputMode="numeric"
+            autoComplete="off"
+            className="pin-input"
+          />
+          <button
+            type="button"
+            className="btn small"
+            onClick={() => setDriverPin(String(Math.floor(1000 + Math.random() * 9000)))}
+          >
+            Сгенерировать
+          </button>
+        </div>
       </Field>
+      <p className="hint wide">
+        Этот код водитель вводит в мобильном приложении вместе с госномером. 4–8 цифр. Пусто — вход в
+        приложение для этой машины закрыт.
+      </p>
       <Field label="Модель">
         <input value={model} onChange={(event) => setModel(event.target.value)} placeholder="Volvo FH" />
       </Field>
