@@ -1,0 +1,5 @@
+/* Специфика менеджера — общие Android-стили в ../mobile/android-base.css */
+
+.manager-body {
+  /* класс совместимости; база вешается через mobile-app */
+}

@@ -1,7 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { DriverApp } from './DriverApp'
-import '../styles.css'
+import '../mobile/android-base.css'
 import './driver.css'
 
 const root = document.getElementById('driver-root')

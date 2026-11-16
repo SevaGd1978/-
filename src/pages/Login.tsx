@@ -82,8 +82,8 @@ export function LoginPage({ setup }: { setup: boolean }) {
         </div>
         {!setup ? (
           <p className="hint" style={{ marginTop: 16 }}>
-            Водитель: вход по госномеру в{' '}
-            <a href="/driver.html">приложении водителя</a>.
+            С телефона: <a href="/manager.html">менеджер</a> ·{' '}
+            <a href="/driver.html">водитель</a>.
           </p>
         ) : null}
       </form>

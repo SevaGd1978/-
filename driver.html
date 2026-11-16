@@ -2,9 +2,17 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <meta name="theme-color" content="#1e1a17" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="Путевой Водитель" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="format-detection" content="telephone=no" />
     <title>Путевой — водитель</title>
     <meta name="description" content="Рейс, одометр и чеки на соляру для водителя." />
     <link rel="manifest" href="/driver.webmanifest" />
@@ -13,7 +21,7 @@
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231e1a17'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='16' fill='%23f4efe7' font-family='sans-serif'%3EВ%3C/text%3E%3C/svg%3E"
     />
   </head>
-  <body class="driver-body">
+  <body class="mobile-app driver-body">
     <div id="driver-root"></div>
     <script type="module" src="/src/driver/main.tsx"></script>
   </body>

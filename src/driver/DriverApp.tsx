@@ -337,16 +337,16 @@ export function DriverApp() {
 
   if (!ready) {
     return (
-      <div className="driver-shell">
-        <p className="driver-muted">Загрузка…</p>
+      <div className="mobile-shell">
+        <p className="mobile-muted">Загрузка…</p>
       </div>
     )
   }
 
   if (!session || !home) {
     return (
-      <div className="driver-shell">
-        <div className="driver-brand">
+      <div className="mobile-shell">
+        <div className="mobile-brand">
           <strong>Путевой</strong>
           <span>Вход водителя по госномеру машины</span>
         </div>
@@ -356,49 +356,49 @@ export function DriverApp() {
   }
 
   return (
-    <div className="driver-shell">
-      <div className="driver-brand">
+    <div className="mobile-shell">
+      <div className="mobile-brand">
         <strong>{session.plate}</strong>
         <span>
           {session.kind} · {session.model}
           {driverName ? ` · ${driverName}` : ''}
         </span>
       </div>
-      <div className="driver-status-row">
-        <span className={online ? 'driver-online' : 'driver-offline'}>
+      <div className="mobile-status-row">
+        <span className={online ? 'mobile-online' : 'mobile-offline'}>
           {online ? (syncing ? 'Синхронизация…' : 'Сеть есть') : 'Без сети — данные на телефоне'}
         </span>
-        {pendingCount > 0 ? <span className="driver-pending">В очереди: {pendingCount}</span> : null}
-        {fromCache && online ? <span className="driver-muted">Показан кэш, обновляем…</span> : null}
+        {pendingCount > 0 ? <span className="mobile-pending">В очереди: {pendingCount}</span> : null}
+        {fromCache && online ? <span className="mobile-muted">Показан кэш, обновляем…</span> : null}
       </div>
-      <div className="driver-actions" style={{ marginBottom: 14 }}>
-        <button type="button" className="driver-btn ghost" onClick={() => void flushQueue()} disabled={!online || syncing}>
+      <div className="mobile-actions" style={{ marginBottom: 14 }}>
+        <button type="button" className="mobile-btn ghost" onClick={() => void flushQueue()} disabled={!online || syncing}>
           Синхронизировать
         </button>
-        <button type="button" className="driver-btn ghost" onClick={() => void logout()}>
+        <button type="button" className="mobile-btn ghost" onClick={() => void logout()}>
           Выйти
         </button>
       </div>
-      {error ? <div className="driver-error">{error}</div> : null}
-      {notice ? <div className="driver-ok">{notice}</div> : null}
+      {error ? <div className="mobile-error">{error}</div> : null}
+      {notice ? <div className="mobile-ok">{notice}</div> : null}
 
-      <section className="driver-card">
+      <section className="mobile-card">
         <h2>Рейсы машины</h2>
-        <p className="driver-muted">
+        <p className="mobile-muted">
           Рейсы появляются здесь после того, как менеджер заведёт их в основной программе на эту машину.
         </p>
         {home.trips.length === 0 ? (
-          <p className="driver-muted">Пока менеджер не назначил рейсов на эту машину.</p>
+          <p className="mobile-muted">Пока менеджер не назначил рейсов на эту машину.</p>
         ) : (
-          <ul className="driver-list">
+          <ul className="mobile-list">
             {home.trips.map((item) => (
               <li key={item.id}>
                 <button type="button" onClick={() => setSelectedTripId(item.id)}>
-                  <div className="driver-chip">{tripStatusLabel[item.status]}</div>
+                  <div className="mobile-chip">{tripStatusLabel[item.status]}</div>
                   <strong>
                     {item.number} · {dateRu(item.date)}
                   </strong>
-                  <div className="driver-muted">{tripRouteLabel(item)}</div>
+                  <div className="mobile-muted">{tripRouteLabel(item)}</div>
                 </button>
               </li>
             ))}
@@ -468,11 +468,11 @@ function LoginCard({
   }
 
   return (
-    <form className="driver-card" onSubmit={submit}>
+    <form className="mobile-card" onSubmit={submit}>
       <h2>Вход</h2>
-      <p className="driver-muted">Код выдаёт диспетчер в карточке машины (парк). Для демо: 1234.</p>
-      {error ? <div className="driver-error">{error}</div> : null}
-      <label className="driver-field">
+      <p className="mobile-muted">Код выдаёт диспетчер в карточке машины (парк). Для демо: 1234.</p>
+      {error ? <div className="mobile-error">{error}</div> : null}
+      <label className="mobile-field">
         <span>Госномер</span>
         <input
           value={plate}
@@ -483,7 +483,7 @@ function LoginCard({
           required
         />
       </label>
-      <label className="driver-field">
+      <label className="mobile-field">
         <span>Код</span>
         <input
           value={pin}
@@ -494,8 +494,8 @@ function LoginCard({
           required
         />
       </label>
-      <div className="driver-actions">
-        <button type="submit" className="driver-btn primary" disabled={busy}>
+      <div className="mobile-actions">
+        <button type="submit" className="mobile-btn primary" disabled={busy}>
           {busy ? 'Входим…' : 'Войти'}
         </button>
       </div>
@@ -505,20 +505,20 @@ function LoginCard({
 
 function TripCard({ trip, driverName }: { trip: Trip; driverName: string }) {
   return (
-    <section className="driver-card">
-      <div className="driver-chip">{tripStatusLabel[trip.status]}</div>
+    <section className="mobile-card">
+      <div className="mobile-chip">{tripStatusLabel[trip.status]}</div>
       <h2>
         {trip.number} · {dateRu(trip.date)}
       </h2>
       <p>{tripRouteLabel(trip)}</p>
-      <p className="driver-muted">{tripRouteKindLabel(trip.routeKind ?? 'direct')}</p>
+      <p className="mobile-muted">{tripRouteKindLabel(trip.routeKind ?? 'direct')}</p>
       <p>
         {trip.customer}
         {trip.cargo ? ` · ${trip.cargo}` : ''}
         {trip.weightTons ? ` · ${trip.weightTons} т` : ''}
       </p>
-      {driverName ? <p className="driver-muted">Водитель в рейсе: {driverName}</p> : null}
-      {trip.note ? <p className="driver-muted">{trip.note}</p> : null}
+      {driverName ? <p className="mobile-muted">Водитель в рейсе: {driverName}</p> : null}
+      {trip.note ? <p className="mobile-muted">{trip.note}</p> : null}
     </section>
   )
 }
@@ -539,9 +539,9 @@ function OdometerCard({
       : ['odometerLoad1', 'odometerUnload1']
 
   return (
-    <section className="driver-card">
+    <section className="mobile-card">
       <h2>Одометр</h2>
-      <p className="driver-muted">Каждая строка сохраняется отдельно — на погрузке и на разгрузке.</p>
+      <p className="mobile-muted">Каждая строка сохраняется отдельно — на погрузке и на разгрузке.</p>
       {fields.map((field) => (
         <OdometerRow
           key={`${trip.id}-${field}`}
@@ -585,12 +585,12 @@ function OdometerRow({
   }
 
   return (
-    <form className="driver-odo-row" onSubmit={submit}>
-      <label className="driver-field">
+    <form className="mobile-odo-row" onSubmit={submit}>
+      <label className="mobile-field">
         <span>{label}, км</span>
         <input inputMode="numeric" value={text} onChange={(event) => setText(event.target.value)} />
       </label>
-      <button type="submit" className="driver-btn primary" disabled={busy}>
+      <button type="submit" className="mobile-btn primary" disabled={busy}>
         Сохранить
       </button>
     </form>
@@ -621,37 +621,37 @@ function FuelCard({
   }
 
   return (
-    <section className="driver-card">
+    <section className="mobile-card">
       <h2>Чеки на соляру</h2>
-      <p className="driver-muted">Без сети чек остаётся на телефоне и уйдёт при появлении связи.</p>
+      <p className="mobile-muted">Без сети чек остаётся на телефоне и уйдёт при появлении связи.</p>
       {fuel.length === 0 ? (
-        <p className="driver-muted">Пока нет записей.</p>
+        <p className="mobile-muted">Пока нет записей.</p>
       ) : (
-        <ul className="driver-list">
+        <ul className="mobile-list">
           {fuel.map((item) => (
             <li key={item.id}>
               <div>
                 <strong>
                   {money(item.amount)} · {dateRu(item.date)}
                 </strong>
-                <div className="driver-muted">{item.comment || 'Соляра'}</div>
+                <div className="mobile-muted">{item.comment || 'Соляра'}</div>
               </div>
             </li>
           ))}
         </ul>
       )}
       <form onSubmit={submit} style={{ marginTop: 12 }}>
-        <div className="driver-grid">
-          <label className="driver-field">
+        <div className="mobile-grid">
+          <label className="mobile-field">
             <span>Сумма чека, ₽</span>
             <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} required />
           </label>
-          <label className="driver-field">
+          <label className="mobile-field">
             <span>Дата</span>
             <input type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
           </label>
         </div>
-        <label className="driver-field">
+        <label className="mobile-field">
           <span>Комментарий</span>
           <input
             value={comment}
@@ -659,8 +659,8 @@ function FuelCard({
             placeholder="АЗС, литры, номер чека"
           />
         </label>
-        <div className="driver-actions">
-          <button type="submit" className="driver-btn primary" disabled={busy}>
+        <div className="mobile-actions">
+          <button type="submit" className="mobile-btn primary" disabled={busy}>
             Записать чек
           </button>
         </div>

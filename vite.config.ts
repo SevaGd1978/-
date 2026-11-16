@@ -9,6 +9,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         driver: resolve(__dirname, 'driver.html'),
+        manager: resolve(__dirname, 'manager.html'),
       },
     },
   },
