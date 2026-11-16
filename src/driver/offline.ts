@@ -136,6 +136,28 @@ export function applyFuelLocal(
   }
 }
 
+/** Накладывает ещё не отправленные правки водителя поверх свежих рейсов от менеджера. */
+export function overlayPending(home: DriverHome, queue: PendingItem[] = loadQueue()): DriverHome {
+  let next = home
+  for (const item of queue) {
+    if (item.type === 'odometer') {
+      next = applyOdometerLocal(next, item.tripId, item.field, item.value)
+      continue
+    }
+    next = applyFuelLocal(next, {
+      id: item.expenseId,
+      vehicleId: '',
+      tripId: item.tripId,
+      date: item.date,
+      category: 'fuel',
+      amount: item.amount,
+      vat: 0,
+      comment: item.comment,
+    })
+  }
+  return next
+}
+
 export function isProbablyOffline(error?: unknown) {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return true
   if (error instanceof TypeError) return true

@@ -13,6 +13,7 @@ import {
   loadQueue,
   newLocalId,
   ODOMETER_LABELS,
+  overlayPending,
   removeQueueItem,
   saveCache,
   saveCachedSession,
@@ -81,22 +82,26 @@ export function DriverApp() {
         }
         throw new Error('home')
       }
-      const body = (await response.json()) as DriverHome
+      // Рейсы приходят только из основной программы (их вносит менеджер).
+      const body = overlayPending((await response.json()) as DriverHome)
       applyHome(body, { cached: false })
+      refreshPending()
       return body
     } catch (error) {
       const cached = loadCache()
       if (cached) {
-        applyHome(cached.home, { cache: false, cached: true })
+        const merged = overlayPending(cached.home)
+        applyHome(merged, { cache: false, cached: true })
         setSession(cached.session)
-        return cached.home
+        refreshPending()
+        return merged
       }
       if (isProbablyOffline(error)) {
         setError('Нет сети и нет сохранённых данных на телефоне')
       }
       return null
     }
-  }, [applyHome])
+  }, [applyHome, refreshPending])
 
   const flushQueue = useCallback(async () => {
     if (!navigator.onLine) return
@@ -125,6 +130,7 @@ export function DriverApp() {
     function onOnline() {
       setOnline(true)
       void flushQueue()
+      void loadHome()
     }
     function onOffline() {
       setOnline(false)
@@ -135,7 +141,16 @@ export function DriverApp() {
       window.removeEventListener('online', onOnline)
       window.removeEventListener('offline', onOffline)
     }
-  }, [flushQueue])
+  }, [flushQueue, loadHome])
+
+  // Пока есть сеть — подтягиваем рейсы, которые менеджер завёл в основной программе.
+  useEffect(() => {
+    if (!session || !online) return
+    const timer = window.setInterval(() => {
+      void loadHome()
+    }, 12_000)
+    return () => window.clearInterval(timer)
+  }, [session, online, loadHome])
 
   useEffect(() => {
     void (async () => {
@@ -369,8 +384,11 @@ export function DriverApp() {
 
       <section className="driver-card">
         <h2>Рейсы машины</h2>
+        <p className="driver-muted">
+          Рейсы появляются здесь после того, как менеджер заведёт их в основной программе на эту машину.
+        </p>
         {home.trips.length === 0 ? (
-          <p className="driver-muted">Пока нет рейсов на эту машину.</p>
+          <p className="driver-muted">Пока менеджер не назначил рейсов на эту машину.</p>
         ) : (
           <ul className="driver-list">
             {home.trips.map((item) => (

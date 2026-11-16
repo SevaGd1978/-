@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { applyFuelLocal, applyOdometerLocal, type DriverHome } from './offline.ts'
+import { applyFuelLocal, applyOdometerLocal, overlayPending, type DriverHome, type PendingItem } from './offline.ts'
 import type { Trip } from '../types.ts'
 
 const trip = {
@@ -61,5 +61,19 @@ const withFuel = applyFuelLocal(withUnload, {
 })
 assert.equal(withFuel.fuel.length, 1)
 assert.equal(withFuel.fuel[0]?.amount, 5000)
+
+const queue: PendingItem[] = [
+  {
+    id: 'q1',
+    type: 'odometer',
+    tripId: 't1',
+    field: 'odometerUnload1',
+    value: 1500,
+    createdAt: '2026-11-16T00:00:00.000Z',
+  },
+]
+const overlaid = overlayPending(home, queue)
+assert.equal(overlaid.trips[0]?.odometerUnload1, 1500)
+assert.equal(overlaid.trips[0]?.odometerLoad1, null)
 
 console.log('offline tests ok')
