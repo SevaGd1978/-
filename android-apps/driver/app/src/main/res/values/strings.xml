@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Путевой Водитель</string>
+    <string name="server_hint">Адрес сервера Путевой (с телефона в той же Wi‑Fi)</string>
+    <string name="server_example">http://192.168.0.10:5173</string>
+    <string name="open_app">Открыть</string>
+    <string name="change_server">Сменить сервер</string>
+    <string name="page_path">/driver.html</string>
+</resources>
