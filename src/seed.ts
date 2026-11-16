@@ -41,10 +41,10 @@ function directTrip(
 export function createSeed(): State {
   return {
     vehicles: [
-      { id: 'v1', plate: 'А123ВС 116', model: 'Volvo FH', kind: 'Фура', status: 'available', sts: '' },
-      { id: 'v2', plate: 'К456ОР 716', model: 'MAN TGX', kind: 'Фура', status: 'available', sts: '' },
-      { id: 'v3', plate: 'М789ТТ 52', model: 'КАМАЗ 5490', kind: 'Фура', status: 'repair', sts: '' },
-      { id: 'v4', plate: 'Н012ЕК 16', model: 'Mercedes Actros', kind: 'Тягач с прицепом', status: 'downtime', sts: '' },
+      { id: 'v1', plate: 'А123ВС 116', model: 'Volvo FH', kind: 'Фура', status: 'available', sts: '', driverPin: '1234' },
+      { id: 'v2', plate: 'К456ОР 716', model: 'MAN TGX', kind: 'Фура', status: 'available', sts: '', driverPin: '1234' },
+      { id: 'v3', plate: 'М789ТТ 52', model: 'КАМАЗ 5490', kind: 'Фура', status: 'repair', sts: '', driverPin: '1234' },
+      { id: 'v4', plate: 'Н012ЕК 16', model: 'Mercedes Actros', kind: 'Тягач с прицепом', status: 'downtime', sts: '', driverPin: '1234' },
     ],
     drivers: [
       { id: 'd1', name: 'Иванов Сергей', phone: '+7 917 410-20-31' },

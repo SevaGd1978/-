@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { ensureAccounts } from './accounts.ts'
+import { ensureDriverAuth } from './driver.ts'
 import { ensureRoadCache } from './roads.ts'
 import { createSeed } from '../src/seed.ts'
 import type { Driver, Payment, RepairJob, State, Trip, TripExpense, Vehicle } from '../src/types.ts'
@@ -100,6 +101,7 @@ export function openDatabase(file: string): Sql {
   ensureTripRoute(db)
   ensureRoadCache(db)
   ensureAccounts(db)
+  ensureDriverAuth(db)
   rememberTripCustomers(db)
   const seeded = db.prepare(`SELECT value FROM meta WHERE key = 'seeded'`).get() as { value: string } | undefined
   if (!seeded) {
@@ -120,9 +122,25 @@ export function saveVehicle(db: Sql, vehicle: Vehicle): DbResult {
   return transaction(db, () => {
     const position = nextPosition(db, 'vehicles', vehicle.id)
     db.prepare(
-      `INSERT INTO vehicles (id, plate, model, kind, status, sts, position) VALUES (?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET plate = excluded.plate, model = excluded.model, kind = excluded.kind, status = excluded.status, sts = excluded.sts`,
-    ).run(vehicle.id, vehicle.plate, vehicle.model, vehicle.kind, vehicle.status, vehicle.sts, position)
+      `INSERT INTO vehicles (id, plate, model, kind, status, sts, driver_pin, position)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         plate = excluded.plate,
+         model = excluded.model,
+         kind = excluded.kind,
+         status = excluded.status,
+         sts = excluded.sts,
+         driver_pin = excluded.driver_pin`,
+    ).run(
+      vehicle.id,
+      vehicle.plate,
+      vehicle.model,
+      vehicle.kind,
+      vehicle.status,
+      vehicle.sts,
+      vehicle.driverPin ?? '',
+      position,
+    )
     return done(db)
   })
 }
@@ -404,10 +422,19 @@ function writeState(db: Sql, state: State, version: number) {
 
 function insertVehicles(db: Sql, rows: Vehicle[]) {
   const stmt = db.prepare(
-    `INSERT INTO vehicles (id, plate, model, kind, status, sts, position) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO vehicles (id, plate, model, kind, status, sts, driver_pin, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   rows.forEach((row, index) =>
-    stmt.run(row.id, row.plate, row.model, row.kind, row.status, row.sts, rank(index, rows.length)),
+    stmt.run(
+      row.id,
+      row.plate,
+      row.model,
+      row.kind,
+      row.status,
+      row.sts,
+      row.driverPin ?? '',
+      rank(index, rows.length),
+    ),
   )
 }
 
@@ -650,7 +677,9 @@ function readState(db: Sql): State {
   return {
     vehicles: db
       .prepare(
-        `SELECT id, plate, model, kind, COALESCE(status, 'available') AS status, COALESCE(sts, '') AS sts FROM vehicles ORDER BY position DESC`,
+        `SELECT id, plate, model, kind, COALESCE(status, 'available') AS status, COALESCE(sts, '') AS sts,
+                COALESCE(driver_pin, '') AS driverPin
+         FROM vehicles ORDER BY position DESC`,
       )
       .all() as unknown as Vehicle[],
     drivers: db.prepare(`SELECT id, name, phone FROM drivers ORDER BY position DESC`).all() as unknown as Driver[],

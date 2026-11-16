@@ -976,6 +976,7 @@ export function VehicleForm({
   const [kind, setKind] = useState(initial?.kind ?? 'Фура')
   const [status, setStatus] = useState(initial?.status ?? 'available')
   const [sts, setSts] = useState(initial?.sts ?? '')
+  const [driverPin, setDriverPin] = useState(initial?.driverPin ?? '')
   const [error, setError] = useState('')
   const duty = initial ? vehicleDuty(status, state.trips, initial.id) : status
 
@@ -985,6 +986,11 @@ export function VehicleForm({
       setError('Укажите номер, модель и тип машины.')
       return
     }
+    const pin = driverPin.trim()
+    if (pin && (pin.length < 4 || pin.length > 8 || !/^\d+$/.test(pin))) {
+      setError('Код водителя: 4–8 цифр или пусто.')
+      return
+    }
     onSubmit({
       id: initial?.id ?? uid('v'),
       plate: plate.trim().toUpperCase(),
@@ -992,6 +998,7 @@ export function VehicleForm({
       kind: kind.trim(),
       status,
       sts: sts.toUpperCase().replace(/\s+/g, ''),
+      driverPin: pin,
     })
   }
 
@@ -1006,6 +1013,15 @@ export function VehicleForm({
           onChange={(event) => setSts(event.target.value)}
           placeholder="9912345678"
           inputMode="text"
+          autoComplete="off"
+        />
+      </Field>
+      <Field label="Код водителя" wide>
+        <input
+          value={driverPin}
+          onChange={(event) => setDriverPin(event.target.value)}
+          placeholder="4–8 цифр, для входа в приложение"
+          inputMode="numeric"
           autoComplete="off"
         />
       </Field>

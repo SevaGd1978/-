@@ -21,6 +21,8 @@ export interface Vehicle {
   kind: string
   status: ParkStatus
   sts: string
+  /** Код входа водителя в мобильное приложение (4–8 цифр). Пусто — вход закрыт. */
+  driverPin: string
 }
 
 export interface Driver {

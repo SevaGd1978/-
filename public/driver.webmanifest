@@ -1,0 +1,10 @@
+{
+  "name": "Путевой — водитель",
+  "short_name": "Водитель",
+  "start_url": "/driver.html",
+  "display": "standalone",
+  "background_color": "#1e1a17",
+  "theme_color": "#1e1a17",
+  "lang": "ru",
+  "icons": []
+}
