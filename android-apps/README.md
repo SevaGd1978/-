@@ -2,8 +2,8 @@
 
 Готовые файлы:
 
-- `dist/putevoy-driver.apk` — водитель (`com.putevoy.driver`)
-- `dist/putevoy-manager.apk` — менеджер / админ (`com.putevoy.manager`)
+- `apk/putevoy-driver.apk` — водитель (`com.putevoy.driver`)
+- `apk/putevoy-manager.apk` — менеджер / админ (`com.putevoy.manager`)
 
 ## Установка на телефон
 
