@@ -16,6 +16,15 @@ import {
   userByToken,
 } from './accounts.ts'
 import {
+  backupDir,
+  backupHour,
+  backupKeepDays,
+  backupTimeZone,
+  createBackup,
+  listBackups,
+  resolveBackupPath,
+} from './backup.ts'
+import {
   checkpointDatabase,
   deleteDriver,
   deleteExpense,
@@ -212,7 +221,7 @@ async function handleApi(db: DatabaseSync, req: IncomingMessage, res: ServerResp
     }
     if (method === 'GET' && pathname === '/api/backup') {
       if (!actor?.rights.includes('users')) return forbid(res)
-      const file = process.env.PUTEVOY_DB || (existsSync('/data') ? '/data/putevoy.sqlite' : 'data/putevoy.sqlite')
+      const file = dbPath()
       if (!existsSync(file)) return sendJson(res, 404, { error: 'Файл базы не найден' })
       checkpointDatabase(db)
       res.writeHead(200, {
@@ -220,6 +229,45 @@ async function handleApi(db: DatabaseSync, req: IncomingMessage, res: ServerResp
         'content-disposition': 'attachment; filename="putevoy.sqlite"',
       })
       createReadStream(file).pipe(res)
+      return
+    }
+    if (method === 'GET' && pathname === '/api/backups') {
+      if (!actor?.rights.includes('users')) return forbid(res)
+      const file = dbPath()
+      sendJson(res, 200, {
+        backups: listBackups(backupDir(file)),
+        schedule: {
+          hour: backupHour(),
+          timeZone: backupTimeZone(),
+          keepDays: backupKeepDays(),
+          dir: backupDir(file),
+        },
+      })
+      return
+    }
+    if (method === 'POST' && pathname === '/api/backups') {
+      if (!actor?.rights.includes('users')) return forbid(res)
+      const file = dbPath()
+      try {
+        const backup = createBackup(db, file)
+        sendJson(res, 200, { backup, backups: listBackups(backupDir(file)) })
+      } catch (error) {
+        sendJson(res, 500, {
+          error: error instanceof Error ? error.message : 'Не удалось создать бэкап',
+        })
+      }
+      return
+    }
+    if (parts[0] === 'api' && parts[1] === 'backups' && parts[2] && method === 'GET') {
+      if (!actor?.rights.includes('users')) return forbid(res)
+      const name = decodeURIComponent(parts[2])
+      const path = resolveBackupPath(dbPath(), name)
+      if (!path) return sendJson(res, 404, { error: 'Бэкап не найден' })
+      res.writeHead(200, {
+        'content-type': 'application/octet-stream',
+        'content-disposition': `attachment; filename="${name}"`,
+      })
+      createReadStream(path).pipe(res)
       return
     }
     if (method === 'POST' && pathname === '/api/reset') {
@@ -554,6 +602,10 @@ async function readJson(req: IncomingMessage) {
   }
   if (size === 0) return null
   return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown
+}
+
+function dbPath() {
+  return process.env.PUTEVOY_DB || (existsSync('/data') ? '/data/putevoy.sqlite' : 'data/putevoy.sqlite')
 }
 
 function sendJson(res: ServerResponse, status: number, body: unknown) {
