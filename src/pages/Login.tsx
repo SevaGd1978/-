@@ -80,6 +80,12 @@ export function LoginPage({ setup }: { setup: boolean }) {
             {setup ? 'Создать администратора' : 'Войти'}
           </button>
         </div>
+        {!setup ? (
+          <p className="hint" style={{ marginTop: 16 }}>
+            С телефона: <a href="/manager.html">менеджер</a> ·{' '}
+            <a href="/driver.html">водитель</a>.
+          </p>
+        ) : null}
       </form>
     </div>
   )

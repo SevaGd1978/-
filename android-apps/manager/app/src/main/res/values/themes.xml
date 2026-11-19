@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Putevoy" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">#D9772C</item>
+        <item name="colorPrimaryVariant">#1E1A17</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="android:statusBarColor">#1E1A17</item>
+        <item name="android:navigationBarColor">#14110F</item>
+        <item name="android:windowBackground">#1E1A17</item>
+    </style>
+</resources>

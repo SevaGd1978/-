@@ -1,0 +1,5 @@
+/* Специфика водителя — общие Android-стили в ../mobile/android-base.css */
+
+.driver-body {
+  /* класс совместимости; база вешается через mobile-app */
+}

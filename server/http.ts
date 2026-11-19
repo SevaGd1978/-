@@ -33,6 +33,14 @@ import {
   saveVehicle,
   type DbResult,
 } from './db.ts'
+import {
+  addDriverFuel,
+  driverByToken,
+  driverHome,
+  loginDriver,
+  logoutDriver,
+  updateDriverOdometer,
+} from './driver.ts'
 import { checkGibddFines, issueCaptcha } from './gibdd.ts'
 import { cityCatalog, lookupRoutes } from './roads.ts'
 import { splitPlate, stsLooksValid } from '../src/gibdd.ts'
@@ -94,6 +102,50 @@ async function handleApi(db: DatabaseSync, req: IncomingMessage, res: ServerResp
       logout(db, token)
       clearSessionCookie(res, secure)
       sendJson(res, 200, { ok: true })
+      return
+    }
+    const driverToken = readCookie(req, 'putevoy_driver')
+    if (method === 'POST' && pathname === '/api/driver/login') {
+      await handleDriverLogin(db, req, res, secure)
+      return
+    }
+    if (method === 'POST' && pathname === '/api/driver/logout') {
+      logoutDriver(db, driverToken)
+      clearDriverCookie(res, secure)
+      sendJson(res, 200, { ok: true })
+      return
+    }
+    if (method === 'GET' && pathname === '/api/driver/session') {
+      const session = driverByToken(db, driverToken)
+      sendJson(res, 200, { session })
+      return
+    }
+    if (method === 'GET' && pathname === '/api/driver/home') {
+      const session = driverByToken(db, driverToken)
+      if (!session) return denyDriver(res)
+      sendJson(res, 200, driverHome(db, session))
+      return
+    }
+    if (method === 'POST' && pathname === '/api/driver/odometer') {
+      const session = driverByToken(db, driverToken)
+      if (!session) return denyDriver(res)
+      const body = await readJson(req)
+      const parsed = odometerBody(body)
+      if (!parsed) return sendJson(res, 400, { error: 'Укажите рейс и показания одометра' })
+      const result = updateDriverOdometer(db, session, parsed.tripId, parsed.fields)
+      if (!result.ok) return sendJson(res, result.status, { error: result.error })
+      sendJson(res, 200, result.home)
+      return
+    }
+    if (method === 'POST' && pathname === '/api/driver/fuel') {
+      const session = driverByToken(db, driverToken)
+      if (!session) return denyDriver(res)
+      const body = await readJson(req)
+      const parsed = fuelBody(body)
+      if (!parsed) return sendJson(res, 400, { error: 'Укажите рейс, дату и сумму чека' })
+      const result = addDriverFuel(db, session, parsed)
+      if (!result.ok) return sendJson(res, result.status, { error: result.error })
+      sendJson(res, 200, result.home)
       return
     }
     if (pathname === '/api/users' && method === 'GET') {
@@ -197,6 +249,101 @@ async function handleApi(db: DatabaseSync, req: IncomingMessage, res: ServerResp
     const message = error instanceof Error && error.message === 'too big' ? 'Слишком большой запрос' : 'Некорректный запрос'
     sendJson(res, 400, { error: message })
   }
+}
+
+async function handleDriverLogin(db: DatabaseSync, req: IncomingMessage, res: ServerResponse, secure: boolean) {
+  const address = clientAddress(req)
+  const blocked = loginFailures.get(`driver:${address}`)
+  if (blocked && blocked.until > Date.now()) {
+    sendJson(res, 429, { error: 'Слишком много попыток. Подождите минуту.' })
+    return
+  }
+  const body = await readJson(req)
+  const record = body && typeof body === 'object' ? (body as Record<string, unknown>) : null
+  const plate = record && typeof record.plate === 'string' ? record.plate : ''
+  const pin = record && typeof record.pin === 'string' ? record.pin : ''
+  const session = loginDriver(db, plate, pin)
+  if (!session) {
+    const next = (blocked?.count ?? 0) + 1
+    loginFailures.set(
+      `driver:${address}`,
+      next >= 8 ? { count: 0, until: Date.now() + 60_000 } : { count: next, until: 0 },
+    )
+    sendJson(res, 401, { error: 'Неверный госномер или код. Код выдаёт диспетчер в карточке машины.' })
+    return
+  }
+  loginFailures.delete(`driver:${address}`)
+  setDriverCookie(res, session.token, secure)
+  sendJson(res, 200, { session: session.session })
+}
+
+function denyDriver(res: ServerResponse) {
+  sendJson(res, 401, { error: 'Войдите по госномеру машины' })
+}
+
+function setDriverCookie(res: ServerResponse, token: string, secure: boolean) {
+  const pieces = [
+    `putevoy_driver=${encodeURIComponent(token)}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    `Max-Age=${30 * 24 * 60 * 60}`,
+  ]
+  if (secure) pieces.push('Secure')
+  res.setHeader('set-cookie', pieces.join('; '))
+}
+
+function clearDriverCookie(res: ServerResponse, secure: boolean) {
+  const pieces = ['putevoy_driver=', 'Path=/', 'HttpOnly', 'SameSite=Lax', 'Max-Age=0']
+  if (secure) pieces.push('Secure')
+  res.setHeader('set-cookie', pieces.join('; '))
+}
+
+function odometerBody(body: unknown) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null
+  const row = body as Record<string, unknown>
+  const tripId = typeof row.tripId === 'string' ? row.tripId.trim() : ''
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(tripId)) return null
+  const fields: {
+    odometerLoad1?: number | null
+    odometerUnload1?: number | null
+    odometerLoad2?: number | null
+    odometerUnload2?: number | null
+  } = {}
+  let any = false
+  for (const key of ['odometerLoad1', 'odometerUnload1', 'odometerLoad2', 'odometerUnload2'] as const) {
+    if (!(key in row)) continue
+    const value = row[key]
+    if (value === null || value === '') {
+      fields[key] = null
+      any = true
+      continue
+    }
+    const number = typeof value === 'number' ? value : typeof value === 'string' ? Number(value.replace(/\s/g, '')) : NaN
+    if (!Number.isFinite(number) || number < 0 || Math.floor(number) !== number) return null
+    fields[key] = number
+    any = true
+  }
+  if (!any) return null
+  return { tripId, fields }
+}
+
+function fuelBody(body: unknown) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null
+  const row = body as Record<string, unknown>
+  const tripId = typeof row.tripId === 'string' ? row.tripId.trim() : ''
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(tripId)) return null
+  const date = typeof row.date === 'string' ? row.date.trim() : ''
+  const amount =
+    typeof row.amount === 'number'
+      ? row.amount
+      : typeof row.amount === 'string'
+        ? Number(row.amount.replace(/\s/g, '').replace(',', '.'))
+        : NaN
+  const comment = typeof row.comment === 'string' ? row.comment : ''
+  const expenseId = typeof row.expenseId === 'string' ? row.expenseId.trim() : undefined
+  if (!date || !Number.isFinite(amount)) return null
+  return { tripId, date, amount, comment, expenseId }
 }
 
 async function handleLogin(db: DatabaseSync, req: IncomingMessage, res: ServerResponse, secure: boolean) {
