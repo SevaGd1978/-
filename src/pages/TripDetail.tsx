@@ -112,7 +112,11 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
         <p className="muted">
           {dateRu(trip.date)}
           {(trip.routeKind ?? 'direct') === 'round2'
-            ? ` · плечо 1: ${trip.customer} · ${trip.cargo} · плечо 2: ${trip.customer2} · ${trip.cargo2}`
+            ? ` · плечо 1: ${trip.customer} · ${trip.cargo}${
+                trip.customer2 || trip.cargo2 || trip.load2 || trip.unload2 || trip.rate2
+                  ? ` · плечо 2: ${trip.customer2 || 'заказчик позже'} · ${trip.cargo2 || 'груз позже'}`
+                  : ' · плечо 2 позже'
+              }`
             : ` · ${trip.customer} · ${trip.cargo}`}
           {trip.weightTons ? ` · ${tons(trip.weightTons)}` : ''}
         </p>
@@ -146,7 +150,7 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
         </p>
         <p className="muted">
           Одометр: погрузка {formatOdometer(trip.odometerLoad1)}, выгрузка {formatOdometer(trip.odometerUnload1)}
-          {(trip.routeKind ?? 'direct') === 'round2'
+          {(trip.routeKind ?? 'direct') === 'round2' && (trip.load2 || trip.unload2 || trip.odometerLoad2 != null || trip.odometerUnload2 != null)
             ? ` · погрузка 2 ${formatOdometer(trip.odometerLoad2)}, выгрузка 2 ${formatOdometer(trip.odometerUnload2)}`
             : ''}
           {odometerRun != null ? ` · пробег ${odometerRun.toLocaleString('ru-RU')} км` : ''}
@@ -179,8 +183,9 @@ export function TripDetail({ id, onBack, onOpen }: { id: string; onBack: () => v
           Плечо 1 · {trip.customer}: ставка {money(trip.rate)}, оплачено{' '}
           {money(sumAmounts(payments.filter((payment) => (payment.leg ?? 0) === 1)))}, долг{' '}
           {money(legDebt(trip, 1, sumAmounts(payments.filter((payment) => (payment.leg ?? 0) === 1))))}
-          {trip.payDue ? `, срок ${dateRu(trip.payDue)}` : ''}. Плечо 2 · {trip.customer2}: ставка {money(trip.rate2)},
-          оплачено {money(sumAmounts(payments.filter((payment) => (payment.leg ?? 0) === 2)))}, долг{' '}
+          {trip.payDue ? `, срок ${dateRu(trip.payDue)}` : ''}. Плечо 2 · {trip.customer2 || 'заказчик позже'}:
+          ставка {trip.rate2 > 0 ? money(trip.rate2) : 'позже'}, оплачено{' '}
+          {money(sumAmounts(payments.filter((payment) => (payment.leg ?? 0) === 2)))}, долг{' '}
           {money(legDebt(trip, 2, sumAmounts(payments.filter((payment) => (payment.leg ?? 0) === 2))))}
           {trip.payDue2 ? `, срок ${dateRu(trip.payDue2)}` : ''}.
         </p>

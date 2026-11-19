@@ -1,0 +1,420 @@
+/* База под популярные Android: Samsung, Xiaomi/Redmi, Huawei/Honor, Realme, Pixel, TECNO. */
+
+:root {
+  --mobile-bg0: #1e1a17;
+  --mobile-bg1: #14110f;
+  --mobile-text: #f4efe7;
+  --mobile-muted: #b7aea2;
+  --mobile-accent: #d9772c;
+  --mobile-touch: 48px;
+  --mobile-radius: 14px;
+  --mobile-safe-top: env(safe-area-inset-top, 0px);
+  --mobile-safe-right: env(safe-area-inset-right, 0px);
+  --mobile-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --mobile-safe-left: env(safe-area-inset-left, 0px);
+  color-scheme: dark;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  height: 100%;
+}
+
+body.mobile-app {
+  margin: 0;
+  min-height: 100%;
+  min-height: 100dvh;
+  background:
+    radial-gradient(120% 80% at 10% 0%, #2a241f 0%, transparent 55%),
+    linear-gradient(180deg, var(--mobile-bg0) 0%, var(--mobile-bg1) 100%);
+  background-attachment: fixed;
+  color: var(--mobile-text);
+  font-family: "Roboto", "Noto Sans", "Segoe UI", sans-serif;
+  -webkit-tap-highlight-color: rgba(217, 119, 44, 0.25);
+  touch-action: manipulation;
+  overscroll-behavior-y: contain;
+  padding:
+    var(--mobile-safe-top)
+    var(--mobile-safe-right)
+    0
+    var(--mobile-safe-left);
+  box-sizing: border-box;
+}
+
+body.mobile-app *,
+body.mobile-app *::before,
+body.mobile-app *::after {
+  box-sizing: border-box;
+}
+
+.mobile-shell {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  padding:
+    16px
+    max(16px, var(--mobile-safe-left))
+    calc(24px + var(--mobile-safe-bottom) + 8px)
+    max(16px, var(--mobile-safe-right));
+}
+
+/* Широкие «лопаты» Samsung/Xiaomi — не растягивать форму на всю ширину */
+@media (min-width: 600px) {
+  .mobile-shell {
+    max-width: 520px;
+    padding-top: 24px;
+  }
+}
+
+/* Узкие экраны Redmi/TECNO ~360 CSS px */
+@media (max-width: 380px) {
+  .mobile-shell {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
+.mobile-shell a {
+  color: #ffd2a8;
+}
+
+.mobile-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 18px;
+}
+
+.mobile-brand strong {
+  font-size: clamp(22px, 6vw, 28px);
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+}
+
+.mobile-brand span {
+  color: var(--mobile-muted);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.mobile-card {
+  background: rgba(255, 248, 239, 0.06);
+  border: 1px solid rgba(244, 239, 231, 0.12);
+  border-radius: var(--mobile-radius);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.mobile-card h2 {
+  margin: 0 0 10px;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.mobile-card p {
+  margin: 0 0 8px;
+  line-height: 1.4;
+  color: #e8dfd3;
+}
+
+.mobile-muted {
+  color: var(--mobile-muted) !important;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.mobile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.mobile-field span {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mobile-muted);
+}
+
+/* >=16px — без авто-зума клавиатуры на Android Chrome / Samsung Internet */
+.mobile-field input,
+.mobile-field textarea,
+.mobile-field select,
+.mobile-btn {
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.mobile-field input,
+.mobile-field textarea,
+.mobile-field select {
+  width: 100%;
+  min-height: var(--mobile-touch);
+  border: 1px solid rgba(244, 239, 231, 0.18);
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--mobile-text);
+  border-radius: 12px;
+  padding: 12px;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.mobile-field select {
+  background-image: linear-gradient(45deg, transparent 50%, #b7aea2 50%),
+    linear-gradient(135deg, #b7aea2 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) calc(50% - 3px),
+    calc(100% - 12px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 36px;
+}
+
+.mobile-field textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.mobile-field input:focus,
+.mobile-field textarea:focus,
+.mobile-field select:focus {
+  outline: 2px solid rgba(217, 119, 44, 0.7);
+  outline-offset: 1px;
+}
+
+.mobile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.mobile-btn {
+  appearance: none;
+  border: 0;
+  border-radius: 12px;
+  min-height: var(--mobile-touch);
+  padding: 12px 16px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.mobile-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.mobile-btn.primary {
+  background: var(--mobile-accent);
+  color: #fff;
+  flex: 1 1 140px;
+}
+
+.mobile-btn.ghost {
+  background: transparent;
+  color: var(--mobile-text);
+  border: 1px solid rgba(244, 239, 231, 0.25);
+  flex: 0 1 auto;
+}
+
+.mobile-error,
+.mobile-ok {
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.mobile-error {
+  background: rgba(180, 50, 40, 0.25);
+  border: 1px solid rgba(255, 120, 100, 0.35);
+  color: #ffd4cc;
+}
+
+.mobile-ok {
+  background: rgba(40, 120, 70, 0.25);
+  border: 1px solid rgba(120, 220, 160, 0.35);
+  color: #d7ffe8;
+}
+
+.mobile-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  max-height: min(60vh, 520px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-list button,
+.mobile-list > li > div {
+  width: 100%;
+  text-align: left;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(244, 239, 231, 0.1);
+  color: inherit;
+  border-radius: 12px;
+  padding: 12px;
+  min-height: var(--mobile-touch);
+}
+
+.mobile-list button {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.mobile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 420px) {
+  .mobile-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mobile-chip {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(217, 119, 44, 0.2);
+  color: #ffd2a8;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.mobile-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.mobile-online {
+  color: #9be7b8;
+}
+
+.mobile-offline {
+  color: #ffc27a;
+}
+
+.mobile-pending {
+  color: #ffd2a8;
+}
+
+.mobile-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+  position: sticky;
+  top: var(--mobile-safe-top);
+  z-index: 5;
+  padding: 4px 0 8px;
+  background: linear-gradient(180deg, rgba(20, 17, 15, 0.96), rgba(20, 17, 15, 0.88));
+  backdrop-filter: blur(8px);
+}
+
+.mobile-tabs button {
+  appearance: none;
+  border: 1px solid rgba(244, 239, 231, 0.18);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--mobile-text);
+  border-radius: 12px;
+  min-height: var(--mobile-touch);
+  padding: 10px 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.mobile-tabs button[aria-pressed='true'] {
+  background: var(--mobile-accent);
+  border-color: transparent;
+}
+
+.mobile-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mobile-chips button {
+  appearance: none;
+  border: 1px solid rgba(244, 239, 231, 0.2);
+  background: rgba(0, 0, 0, 0.22);
+  color: #e8dfd3;
+  border-radius: 999px;
+  min-height: 40px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.mobile-chips button[aria-pressed='true'] {
+  background: rgba(217, 119, 44, 0.35);
+  color: #fff;
+  border-color: transparent;
+}
+
+.mobile-odo-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 12px;
+}
+
+.mobile-odo-row .mobile-field {
+  margin-bottom: 0;
+}
+
+.mobile-odo-row .mobile-btn {
+  white-space: nowrap;
+  min-width: 112px;
+}
+
+@media (max-width: 360px) {
+  .mobile-odo-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Клавиатура Android: не прятать кнопку сохранения под IME на коротких экранах */
+.mobile-sticky-actions {
+  position: sticky;
+  bottom: calc(8px + var(--mobile-safe-bottom));
+  display: flex;
+  gap: 10px;
+  padding-top: 8px;
+  background: linear-gradient(180deg, transparent, rgba(20, 17, 15, 0.95) 30%);
+}
+
+/* Landscape на складных / широких телефоны */
+@media (orientation: landscape) and (max-height: 480px) {
+  .mobile-shell {
+    padding-top: 10px;
+  }
+
+  .mobile-brand {
+    margin-bottom: 10px;
+  }
+
+  .mobile-tabs {
+    position: static;
+  }
+}

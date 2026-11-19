@@ -91,6 +91,9 @@ export function parseVehicle(value: unknown): Vehicle | null {
   const row = record(value)
   if (!row) return null
   const status = row.status
+  const pinRaw = row.driverPin == null ? '' : typeof row.driverPin === 'string' ? row.driverPin.trim() : null
+  if (pinRaw == null) return null
+  if (pinRaw && (pinRaw.length < 4 || pinRaw.length > 8 || !/^\d+$/.test(pinRaw))) return null
   const parsed = {
     id: id(row.id),
     plate: text(row.plate, 32),
@@ -103,6 +106,7 @@ export function parseVehicle(value: unknown): Vehicle | null {
           ? (status as ParkStatus)
           : null,
     sts: optionalText(row.sts, 16),
+    driverPin: pinRaw,
   }
   if (!parsed.id || !parsed.plate || !parsed.model || !parsed.kind || !parsed.status || parsed.sts == null) return null
   return {
@@ -112,6 +116,7 @@ export function parseVehicle(value: unknown): Vehicle | null {
     kind: parsed.kind,
     status: parsed.status,
     sts: parsed.sts.toUpperCase().replace(/\s+/g, ''),
+    driverPin: parsed.driverPin,
   }
 }
 
@@ -204,7 +209,8 @@ export function parseTrip(value: unknown): Trip | null {
   ) {
     return null
   }
-  if (parsed.routeKind === 'round2' && (!parsed.customer2.trim() || parsed.rate2 <= 0)) {
+  // Второе плечо кругорейса ×2 можно сохранить пустым и дописать позже.
+  if (parsed.routeKind === 'round2' && parsed.rate2 < 0) {
     return null
   }
   const draft: Trip = {

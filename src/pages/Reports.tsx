@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { currentPeriod, formatPlain } from '../format'
+import { useMemo, useState } from 'react'
+import { inRange } from '../calc'
+import { currentPeriod, formatPlain, periodTitle } from '../format'
 import { buildReport, monthBounds, reportCatalog, type BuiltReport, type ReportKind } from '../reports/build'
 import { uid, useData } from '../store'
 import { Empty, FormError } from '../ui'
@@ -42,6 +43,16 @@ export function ReportsPage() {
   const [busy, setBusy] = useState<'excel' | 'pdf' | null>(null)
   const selected = reportCatalog.find((item) => item.kind === kind) ?? reportCatalog[0]
   const active = reports.find((item) => item.id === activeId) ?? null
+  const tripsInPeriod = useMemo(
+    () => state.trips.filter((trip) => inRange(trip.date, from, to)).length,
+    [state.trips, from, to],
+  )
+  const periodHint =
+    state.trips.length > 0 && tripsInPeriod === 0
+      ? `В выбранном периоде рейсов нет (в базе ${state.trips.length}). Выберите «Прошлый месяц» или «Всё время» — рейсы не удалены.`
+      : preset === 'month'
+        ? `Сейчас открыт ${periodTitle(currentPeriod()).toLowerCase()}. Рейсы других месяцев в этот отчёт не входят.`
+        : ''
 
   function choosePreset(next: Preset) {
     setPreset(next)
@@ -103,6 +114,7 @@ export function ReportsPage() {
           ))}
         </div>
         <p className="muted report-note">{selected.text}</p>
+        {periodHint ? <p className="hint hint-warn">{periodHint}</p> : null}
         <div className="toolbar report-toolbar">
           <select
             aria-label="Период отчёта"

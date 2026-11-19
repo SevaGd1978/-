@@ -121,11 +121,35 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
         ) : null}
       </div>
       {allowed ? null : <p className="hint">Просмотр. Менять рейсы может тот, у кого есть это право.</p>}
-      <p className="muted">
-        Показано {rows.length} из {state.trips.length}
-      </p>
+      <div className="toolbar" style={{ marginTop: 0 }}>
+        <p className="muted toolbar-note">
+          В базе {state.trips.length} · на экране {rows.length}
+          {status !== 'all' || query.trim()
+            ? ' (сработало состояние или поиск — остальные рейсы не удалены)'
+            : ''}
+        </p>
+        {status !== 'all' || query.trim() ? (
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={() => {
+              setQuery('')
+              setStatus('all')
+            }}
+          >
+            Сбросить фильтр
+          </button>
+        ) : null}
+      </div>
       {rows.length === 0 ? (
-        <Empty title="Рейсов не найдено" text="Измените фильтр или создайте новый рейс." />
+        <Empty
+          title="Рейсов не найдено"
+          text={
+            state.trips.length > 0
+              ? 'Сбросьте фильтр или поиск — в базе рейсы есть.'
+              : 'Измените фильтр или создайте новый рейс.'
+          }
+        />
       ) : (
         <div className="trip-board">
           <section className="card">

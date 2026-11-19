@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { expenseVat, expenseWithVat } from './calc'
 import { money } from './format'
 
@@ -88,14 +88,19 @@ export function Drawer({
 export function ConfirmDialog({
   text,
   confirmLabel,
+  confirmPhrase,
   onYes,
   onNo,
 }: {
   text: string
   confirmLabel: string
+  /** Если задано — подтверждение только после ввода этой фразы. */
+  confirmPhrase?: string
   onYes: () => void
   onNo: () => void
 }) {
+  const [typed, setTyped] = useState('')
+  const ready = !confirmPhrase || typed.trim() === confirmPhrase
   return (
     <div className="overlay confirm-layer" onMouseDown={onNo}>
       <div
@@ -106,11 +111,25 @@ export function ConfirmDialog({
         onMouseDown={(event) => event.stopPropagation()}
       >
         <p>{text}</p>
+        {confirmPhrase ? (
+          <label className="field">
+            <span>
+              Введите <strong>{confirmPhrase}</strong> для подтверждения
+            </span>
+            <input
+              value={typed}
+              onChange={(event) => setTyped(event.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+              aria-label={`Введите ${confirmPhrase}`}
+            />
+          </label>
+        ) : null}
         <div className="form-actions">
           <button type="button" className="btn ghost" onClick={onNo}>
             Отмена
           </button>
-          <button type="button" className="btn danger" onClick={onYes}>
+          <button type="button" className="btn danger" onClick={onYes} disabled={!ready}>
             {confirmLabel}
           </button>
         </div>

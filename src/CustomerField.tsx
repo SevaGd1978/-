@@ -6,11 +6,13 @@ export function CustomerField({
   value,
   onChange,
   catalog,
+  placeholder = 'Начните вводить имя',
 }: {
   label: string
   value: string
   onChange: (value: string) => void
   catalog: CustomerEntry[]
+  placeholder?: string
 }) {
   const listId = useId()
   const listRef = useRef<HTMLUListElement>(null)
@@ -70,7 +72,7 @@ export function CustomerField({
           aria-autocomplete="list"
           aria-controls={listId}
           autoComplete="off"
-          placeholder="Начните вводить имя"
+          placeholder={placeholder}
           onChange={(event) => {
             onChange(event.target.value)
             setActive(0)

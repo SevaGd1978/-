@@ -27,7 +27,13 @@ import { useData } from '../store'
 import { tripRouteLabel } from '../tripRoute.ts'
 import { Badge, Empty } from '../ui'
 
-export function Dashboard({ onOpenTrip }: { onOpenTrip: (id: string) => void }) {
+export function Dashboard({
+  onOpenTrip,
+  onOpenTrips,
+}: {
+  onOpenTrip: (id: string) => void
+  onOpenTrips: () => void
+}) {
   const { state } = useData()
   const [period, setPeriod] = useState(currentPeriod())
   const today = todayIso()
@@ -150,7 +156,13 @@ export function Dashboard({ onOpenTrip }: { onOpenTrip: (id: string) => void }) 
         <section className="card">
           <div className="section-head">
             <h2>Активные рейсы</h2>
+            <button type="button" className="btn small ghost" onClick={onOpenTrips}>
+              Все рейсы · {state.trips.length}
+            </button>
           </div>
+          <p className="muted" style={{ marginBottom: 10 }}>
+            Здесь только запланированные, на погрузке и в пути. Доставленные и закрытые — во вкладке «Рейсы».
+          </p>
           {active.length === 0 ? (
             <Empty title="Нет рейсов в работе" text="Запланированные, на погрузке и в пути появятся здесь." />
           ) : (

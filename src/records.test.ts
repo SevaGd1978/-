@@ -53,6 +53,25 @@ const round = parseTrip({
 assert.equal(round?.to, 'Казань')
 assert.equal(round?.odometerLoad1, 50000)
 
+const round2later = parseTrip({
+  ...base,
+  to: '',
+  routeKind: 'round2',
+  load1: 'Самара',
+  unload1: 'Уфа',
+  load2: '',
+  unload2: '',
+  customer2: '',
+  cargo2: '',
+  rate2: 0,
+  payDue2: '',
+  payDue: '',
+})
+assert.equal(round2later?.routeKind, 'round2')
+assert.equal(round2later?.customer2, '')
+assert.equal(round2later?.rate2, 0)
+assert.match(round2later ? `${round2later.load2}|${round2later.unload2}` : '', /^\|$/)
+
 const toll = parseExpense({
   id: 'e_toll',
   vehicleId: 'v1',

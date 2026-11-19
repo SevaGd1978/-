@@ -32,6 +32,10 @@ const round1: Trip = {
   weightTons: 10,
   rate: 50_000,
   payDue: '',
+  customer2: '',
+  cargo2: '',
+  rate2: 0,
+  payDue2: '',
   status: 'planned',
   note: '',
 }
@@ -57,5 +61,42 @@ assert.match(tripRouteReportLabel(round2), /Кругорейс · 2 загруз
 assert.match(tripRouteReportLabel(round2), /погр\. Уфа/)
 assert.match(tripRouteReportLabel(round2), /выгр\. Челябинск/)
 assert.equal(tripRouteLabel(round2), tripRouteReportLabel(round2).split(': ')[1])
+
+assert.equal(
+  validateTripRoute({
+    routeKind: 'round2',
+    from: 'Казань',
+    to: '',
+    load1: 'Самара',
+    unload1: 'Уфа',
+    load2: '',
+    unload2: '',
+  }),
+  null,
+)
+assert.match(
+  validateTripRoute({
+    routeKind: 'round2',
+    from: 'Казань',
+    to: '',
+    load1: 'Самара',
+    unload1: 'Уфа',
+    load2: 'Челябинск',
+    unload2: '',
+  }) || '',
+  /оба города/,
+)
+const incomplete = finalizeTripRoute({
+  ...round1,
+  routeKind: 'round2',
+  load2: '',
+  unload2: '',
+  customer2: '',
+  cargo2: '',
+  rate2: 0,
+  payDue2: '',
+})
+assert.match(tripRouteLabel(incomplete), /плечо 2 позже/)
+assert.equal(tripRoadPairs(incomplete).length, 3)
 
 console.log('tripRoute tests ok')

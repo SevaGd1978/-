@@ -14,6 +14,7 @@ import { TripList } from './pages/TripList'
 import { AccountsPage } from './pages/Accounts'
 import { useAuth } from './auth'
 import { useData } from './store'
+import { looksLikeDemoSeed } from './demoSeed'
 import { ConfirmDialog } from './ui'
 
 type Screen =
@@ -75,13 +76,14 @@ export function App() {
     setMenuOpen(false)
   }
 
-  const onRoad = state.trips.filter((item) => item.status === 'loading' || item.status === 'in_transit').length
   const openRepairs = state.repairs.filter((job) => job.status !== 'done').length
   const debtCount = state.trips.filter(
     (item) => debtOf(item, sumAmounts(state.payments.filter((payment) => payment.tripId === item.id))) > 0,
   ).length
+  const demoSeed = ready && looksLikeDemoSeed(state)
+  // В меню «Рейсы» — всего рейсов в базе (раньше был только «на линии», из‑за нуля казалось, что рейсов нет).
   const counts: Partial<Record<Screen['name'], number>> = {
-    trips: onRoad,
+    trips: state.trips.length,
     repair: openRepairs,
     payments: debtCount,
   }
@@ -180,7 +182,16 @@ export function App() {
             </section>
           ) : null}
           {offline && ready ? <p className="net-banner">Нет связи с общей базой. Показаны последние полученные данные.</p> : null}
-          {ready && screen.name === 'dashboard' ? <Dashboard onOpenTrip={(id) => go({ name: 'trip', id })} /> : null}
+          {demoSeed ? (
+            <p className="warn-banner" role="status">
+              Сейчас в базе учебные демо-рейсы (Р-1034…Р-1041). Если пропали рабочие записи — скорее всего нажали
+              «Вернуть демо-данные» или база на сервере пересоздалась. Восстановите из резервной копии Amvera /{' '}
+              <code>/api/backup</code>.
+            </p>
+          ) : null}
+          {ready && screen.name === 'dashboard' ? (
+            <Dashboard onOpenTrip={(id) => go({ name: 'trip', id })} onOpenTrips={() => go({ name: 'trips' })} />
+          ) : null}
           {ready && screen.name === 'trips' ? <TripList onOpen={(id) => go({ name: 'trip', id })} /> : null}
           {ready && screen.name === 'trip' ? (
             <TripDetail id={screen.id} onBack={() => go({ name: 'trips' })} onOpen={(id) => go({ name: 'trip', id })} />
@@ -196,8 +207,9 @@ export function App() {
       </main>
       {resetting ? (
         <ConfirmDialog
-          text="Вернуть исходные демо-рейсы? Текущие записи в общей базе будут заменены у всех."
-          confirmLabel="Восстановить"
+          text="Это сотрёт все рабочие рейсы, оплаты и расходы у всех пользователей и подставит учебные демо-данные. Сначала скачайте резервную копию (/api/backup), если данные ещё нужны."
+          confirmLabel="Стереть и вернуть демо"
+          confirmPhrase="СБРОС"
           onNo={() => setResetting(false)}
           onYes={() => {
             resetDemo()
