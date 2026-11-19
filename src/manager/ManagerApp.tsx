@@ -224,7 +224,7 @@ function TripsPanel({
 }) {
   const [editing, setEditing] = useState<Trip | 'new' | null>(null)
   const trips = useMemo(
-    () => [...state.trips].sort((a, b) => b.date.localeCompare(a.date) || b.number.localeCompare(a.number)).slice(0, 30),
+    () => [...state.trips].sort((a, b) => b.date.localeCompare(a.date) || b.number.localeCompare(a.number)),
     [state.trips],
   )
 
@@ -237,6 +237,7 @@ function TripsPanel({
           </button>
         </div>
         <p className="mobile-muted">После сохранения рейс увидит водитель выбранной машины.</p>
+        {trips.length > 0 ? <p className="mobile-muted">Всего рейсов: {trips.length}</p> : null}
         {trips.length === 0 ? (
           <p className="mobile-muted">Рейсов пока нет.</p>
         ) : (

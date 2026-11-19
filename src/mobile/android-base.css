@@ -248,6 +248,10 @@ body.mobile-app *::after {
   padding: 0;
   display: grid;
   gap: 8px;
+  max-height: min(60vh, 520px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .mobile-list button,

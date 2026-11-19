@@ -467,6 +467,18 @@ input[readonly] { background: #f6f1ea; }
 .report-section + .report-section { margin-top: 18px; }
 .report-meta { display: grid; gap: 4px; }
 
+.warn-banner {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  border: 1px solid #e4d3a8;
+  font-size: 14px;
+}
+.warn-banner code {
+  font-family: var(--mono);
+  font-size: 13px;
+}
 .net-banner {
   margin: 0 0 14px;
   padding: 10px 14px;
@@ -533,7 +545,21 @@ input[readonly] { background: #f6f1ea; }
 }
 .trip-board > .card { min-width: 0; }
 .trip-board > .card:first-child { padding: 8px 6px 4px; }
-.trip-sheet { font-size: 13px; line-height: 1.15; width: 100%; }
+/* Список рейсов крутится внутри окна: шапка таблицы остаётся на месте. */
+.trip-board .table-wrap {
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.trip-sheet { font-size: 13px; line-height: 1.15; width: 100%; border-collapse: separate; border-spacing: 0; }
+.trip-sheet thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--card);
+  box-shadow: inset 0 -1px 0 var(--line);
+}
 .trip-sheet th,
 .trip-sheet td {
   padding: 2px 4px;
@@ -642,7 +668,17 @@ input[readonly] { background: #f6f1ea; }
 }
 @media (min-width: 1760px) {
   .trip-board { grid-template-columns: minmax(0, 1fr) 300px; }
+  .trip-side {
+    position: sticky;
+    top: 12px;
+    max-height: calc(100vh - 120px);
+    overflow: auto;
+  }
 }
 @media (max-width: 1100px) {
   .trip-board { grid-template-columns: 1fr; }
+  .trip-board .table-wrap { max-height: calc(100vh - 260px); }
+}
+@media (max-width: 640px) {
+  .trip-board .table-wrap { max-height: calc(100vh - 280px); }
 }

@@ -80,10 +80,10 @@ export function logoutDriver(db: DatabaseSync, token: string | null) {
 
 export function driverHome(db: DatabaseSync, session: DriverSession) {
   const { state } = readResult(db)
+  // Все рейсы машины: лимит раньше обрезал старые, и они «пропадали» у водителя.
   const trips = state.trips
     .filter((trip) => trip.vehicleId === session.vehicleId && trip.status !== 'cancelled')
     .sort((a, b) => b.date.localeCompare(a.date) || b.number.localeCompare(a.number))
-    .slice(0, 12)
   const active =
     trips.find((trip) => trip.status === 'loading' || trip.status === 'in_transit') ||
     trips.find((trip) => trip.status === 'planned') ||
