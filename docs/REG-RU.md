@@ -49,7 +49,9 @@ A-запись на IP VPS → reverse proxy (nginx) на `127.0.0.1:3000`, TLS 
 ## 5. Данные с Amvera
 
 - Войти в приложение под администратором и скачать базу: **GET `/api/backup`** (нужно право «Учётные записи»). Перед отдачей файла сервер делает `wal_checkpoint`.
+- **Ежедневные снимки** пишутся в `/data/backups/putevoy-ГГГГ-ММ-ДД.sqlite` (по умолчанию после 02:00 Asia/Yekaterinburg, хранятся 14 дней). Список и скачивание: раздел **Учётные записи** или `GET /api/backups`, `GET /api/backups/<имя>`, ручной снимок `POST /api/backups`.
+- Переменные: `PUTEVOY_BACKUP_DIR`, `PUTEVOY_BACKUP_HOUR` (0–23), `PUTEVOY_BACKUP_TZ`, `PUTEVOY_BACKUP_KEEP_DAYS`.
 - Либо скачать папку **Data** в кабинете Amvera (Репозиторий → Data) или `amvera download data --slug putevoy --region msk_1` (если в архиве только пустой файл — сначала перезапустите приложение на Amvera).
 - Не публиковать `.sqlite` в открытый GitHub.
 
-Amvera-прод оставить работать, пока не проверите копию на REG.RU.
+Amvera-прод оставить работать, пока не проверьте копию на REG.RU.

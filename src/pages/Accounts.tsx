@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PRESETS, RIGHTS, presetFor, rightLabel, sameRights, type PublicUser, type Right } from '../access'
 import { useAuth } from '../auth'
+import { dateRu } from '../format'
 import { ConfirmDialog, Drawer, Empty, Field } from '../ui'
 
 interface Editor {
@@ -9,6 +10,20 @@ interface Editor {
   username: string
   password: string
   rights: Right[]
+}
+
+interface BackupRow {
+  name: string
+  date: string
+  size: number
+  mtime: string
+}
+
+interface BackupSchedule {
+  hour: number
+  timeZone: string
+  keepDays: number
+  dir: string
 }
 
 const BLANK: Editor = { id: null, name: '', username: '', password: '', rights: PRESETS[1].rights.slice() }
@@ -20,6 +35,9 @@ export function AccountsPage() {
   const [error, setError] = useState('')
   const [confirm, setConfirm] = useState<{ id: string; name: string } | null>(null)
   const [preset, setPreset] = useState('dispatcher')
+  const [backups, setBackups] = useState<BackupRow[]>([])
+  const [schedule, setSchedule] = useState<BackupSchedule | null>(null)
+  const [backupBusy, setBackupBusy] = useState(false)
 
   async function load() {
     const response = await fetch('/api/users')
@@ -28,8 +46,17 @@ export function AccountsPage() {
     setUsers(body.users)
   }
 
+  async function loadBackups() {
+    const response = await fetch('/api/backups')
+    if (!response.ok) return
+    const body = (await response.json()) as { backups: BackupRow[]; schedule: BackupSchedule }
+    setBackups(body.backups)
+    setSchedule(body.schedule)
+  }
+
   useEffect(() => {
     void load()
+    void loadBackups()
   }, [])
 
   function openNew() {
@@ -151,6 +178,79 @@ export function AccountsPage() {
           </div>
         )}
       </section>
+      <section className="card">
+        <div className="section-head">
+          <h2>Резервные копии</h2>
+          <div className="row-actions">
+            <a className="btn ghost small" href="/api/backup">
+              Скачать текущую базу
+            </a>
+            <button
+              type="button"
+              className="btn primary small"
+              disabled={backupBusy}
+              onClick={() => {
+                void (async () => {
+                  setBackupBusy(true)
+                  setError('')
+                  try {
+                    const response = await fetch('/api/backups', { method: 'POST' })
+                    const body = (await response.json().catch(() => null)) as {
+                      error?: string
+                      backups?: BackupRow[]
+                    } | null
+                    if (!response.ok) {
+                      setError(body?.error || 'Не удалось создать бэкап')
+                      return
+                    }
+                    if (body?.backups) setBackups(body.backups)
+                    else await loadBackups()
+                  } finally {
+                    setBackupBusy(false)
+                  }
+                })()
+              }}
+            >
+              {backupBusy ? 'Сохраняем…' : 'Сделать снимок сейчас'}
+            </button>
+          </div>
+        </div>
+        <p className="hint">
+          Автоматически каждый день после {schedule ? `${String(schedule.hour).padStart(2, '0')}:00` : '02:00'} (
+          {schedule?.timeZone || 'Asia/Yekaterinburg'}). Хранятся последние {schedule?.keepDays ?? 14} копий на диске
+          сервера.
+        </p>
+        {backups.length === 0 ? (
+          <Empty title="Снимков пока нет" text="Первый появится по расписанию или после кнопки «Сделать снимок сейчас»." />
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Дата</th>
+                  <th>Файл</th>
+                  <th className="num">Размер</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {backups.map((item) => (
+                  <tr key={item.name}>
+                    <td>{dateRu(item.date)}</td>
+                    <td>{item.name}</td>
+                    <td className="num">{formatBytes(item.size)}</td>
+                    <td className="row-actions">
+                      <a className="text-btn" href={`/api/backups/${encodeURIComponent(item.name)}`}>
+                        Скачать
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
       {editor ? (
         <Drawer title={editor.id ? 'Учётная запись' : 'Новая учётная запись'} onClose={() => setEditor(null)}>
           <div className="form-grid">
@@ -222,4 +322,10 @@ export function AccountsPage() {
       ) : null}
     </div>
   )
+}
+
+function formatBytes(size: number) {
+  if (size < 1024) return `${size} Б`
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} КБ`
+  return `${(size / (1024 * 1024)).toFixed(1)} МБ`
 }

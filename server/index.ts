@@ -2,6 +2,7 @@ import { createServer } from 'node:http'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { existsSync } from 'node:fs'
+import { startBackupScheduler } from './backup.ts'
 import { checkpointDatabase, openDatabase } from './db.ts'
 import { handleRequest } from './http.ts'
 
@@ -10,8 +11,10 @@ const dbFile = process.env.PUTEVOY_DB || (existsSync('/data') ? '/data/putevoy.s
 const staticDir = process.env.STATIC_DIR || resolve(dirname(fileURLToPath(import.meta.url)), '../dist')
 const db = openDatabase(dbFile)
 checkpointDatabase(db)
+const stopBackups = startBackupScheduler(db, dbFile)
 
 const shutdown = () => {
+  stopBackups()
   checkpointDatabase(db)
   db.close()
   process.exit(0)
